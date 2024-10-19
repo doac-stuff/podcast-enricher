@@ -49,14 +49,15 @@ function startServer() {
                     .json({ error: "No matching podcasts found in the database." });
             }
             // Re-enrich the podcasts
-            const isAllEnriched = yield (0, enrichment_1.enrichBatch)(podcastsToEnrich, true);
-            if (!isAllEnriched) {
+            const payload = yield (0, enrichment_1.enrichPayload)(podcastsToEnrich);
+            const isBatchPosted = yield (0, enrichment_1.postEnrichedPodcasts)(payload);
+            if (!isBatchPosted) {
                 return res
                     .status(500)
-                    .json({ error: "Enrichment process did not finish." });
+                    .json({ error: "Failed to post re-enriched podcasts." });
             }
             yield (0, utils_1.closeBrowser)();
-            res.json({ success: isAllEnriched });
+            res.json({ success: isBatchPosted });
         }
         catch (error) {
             console.error("Error in re-enrichment process:", error);

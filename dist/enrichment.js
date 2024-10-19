@@ -9,46 +9,39 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.enrichBatch = enrichBatch;
+exports.enrichPayload = enrichPayload;
+exports.postEnrichedPodcasts = postEnrichedPodcasts;
 exports.enrichAll = enrichAll;
 const utils_1 = require("./utils");
 const api_spotify_1 = require("./api.spotify");
 const api_youtube_1 = require("./api.youtube");
 const api_podcastindex_1 = require("./api.podcastindex");
 const model_1 = require("./model");
-function enrichBatch(podcasts_1) {
-    return __awaiter(this, arguments, void 0, function* (podcasts, reEnrich = false) {
+function enrichPayload(podcasts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log(`Enriching payload with ${podcasts.length} podcasts...`);
         const promises = [];
-        let podcastsToEnrich = podcasts;
-        if (!reEnrich) {
-            let res = yield fetch(`${utils_1.backendUrl}/enriched`, {
-                method: "POST",
-                body: JSON.stringify({ items: podcasts.map((podcast) => podcast.id) }),
-                headers: [["Content-Type", "application/json"]],
-            });
-            const enrichedPodcasts = yield res.json();
-            if (enrichedPodcasts.error) {
-                throw new Error(enrichedPodcasts.error);
-            }
-            podcastsToEnrich = podcasts.filter((podcast) => !enrichedPodcasts.items.includes(podcast.id));
-            console.log(`Found ${podcastsToEnrich.length} unseen podcasts in this batch. Only unseen podcasts will be enriched.`);
-        }
         const payload = { items: [] };
-        for (let i = 0; i < podcastsToEnrich.length; i++) {
+        for (let i = 0; i < podcasts.length; i++) {
             const newReportRow = Object.assign({}, model_1.emptyEnriched);
             const enrichRow = () => __awaiter(this, void 0, void 0, function* () {
-                console.log(`Enriching podcast "${podcastsToEnrich[i].title}" with popularity score = ${podcastsToEnrich[i].popularityScore}`);
-                yield addBasicInfo(podcastsToEnrich[i], newReportRow);
+                console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
+                yield addBasicInfo(podcasts[i], newReportRow);
                 //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
-                let shouldPush = yield addSpotifyInfo(podcastsToEnrich[i], newReportRow);
-                shouldPush && (shouldPush = yield addAppleInfo(podcastsToEnrich[i], newReportRow));
-                shouldPush && (shouldPush = yield addYoutubeInfo(podcastsToEnrich[i], newReportRow));
+                let shouldPush = yield addSpotifyInfo(podcasts[i], newReportRow);
+                shouldPush && (shouldPush = yield addAppleInfo(podcasts[i], newReportRow));
+                shouldPush && (shouldPush = yield addYoutubeInfo(podcasts[i], newReportRow));
                 if (shouldPush)
                     payload.items.push(newReportRow);
             });
             promises.push(enrichRow());
         }
         yield Promise.all(promises);
+        return payload;
+    });
+}
+function postEnrichedPodcasts(payload) {
+    return __awaiter(this, void 0, void 0, function* () {
         let res = yield fetch(`${utils_1.backendUrl}/podcasts`, {
             method: "POST",
             body: JSON.stringify(payload),
@@ -64,6 +57,20 @@ function enrichBatch(podcasts_1) {
         }
     });
 }
+function filterUnseenPodcasts(podcasts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let res = yield fetch(`${utils_1.backendUrl}/enriched`, {
+            method: "POST",
+            body: JSON.stringify({ items: podcasts.map((podcast) => podcast.id) }),
+            headers: [["Content-Type", "application/json"]],
+        });
+        const enrichedPodcasts = yield res.json();
+        if (enrichedPodcasts.error) {
+            throw new Error(enrichedPodcasts.error);
+        }
+        return podcasts.filter((podcast) => !enrichedPodcasts.items.includes(podcast.id));
+    });
+}
 function enrichAll() {
     return __awaiter(this, void 0, void 0, function* () {
         //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
@@ -73,7 +80,7 @@ function enrichAll() {
             },
         });
         let page = 0;
-        const limit = 4;
+        const limit = 10000;
         let seenCount = 0;
         while (true) {
             try {
@@ -89,18 +96,25 @@ function enrichAll() {
                     skip: page * limit,
                     take: limit,
                 });
-                console.log(`Started enriching batch ${page + 1} with ${podcasts.length} items...`);
+                console.log(`Started processing batch ${page + 1} with ${podcasts.length} items...`);
                 if (podcasts.length == 0) {
                     break;
                 }
-                const enriched = yield enrichBatch(podcasts);
-                if (!enriched) {
-                    console.log(`Enrichment halted due to an error. Batch - ${page + 1}, Batch Limit - ${limit}, Progress - ${seenCount}/${totalCount}`);
-                    process.exit(1);
+                const unseenPodcasts = yield filterUnseenPodcasts(podcasts);
+                console.log(`Found ${unseenPodcasts.length} unseen podcasts in this batch. Only unseen podcasts will be enriched and posted.`);
+                const payloadSize = 4;
+                for (let i = 0; i < Math.ceil(unseenPodcasts.length / payloadSize); i++) {
+                    const payload = [];
+                    for (let j = 0; j < payloadSize; j++) {
+                        const index = i * payloadSize + j;
+                        payload.push(unseenPodcasts[index]);
+                    }
+                    const enrichedPayload = yield enrichPayload(payload);
+                    postEnrichedPodcasts(enrichedPayload); //not awaiting this to optimize for speed
                 }
-                console.log(`Finished enriching batch ${page + 1} with ${podcasts.length} items`);
+                console.log(`Finished processing batch ${page + 1} with ${podcasts.length} items`);
                 seenCount = page * limit + podcasts.length;
-                console.log(`Enriched ${seenCount} Podcast so far out of ${totalCount}`);
+                console.log(`Processed ${seenCount} podcasts so far out of ${totalCount}`);
                 page++;
                 yield (0, utils_1.closeBrowser)();
             }

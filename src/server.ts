@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import { PodcastEnriched } from "./model";
 import { closeBrowser, prisma } from "./utils";
-import { enrichBatch } from "./enrichment";
+import { enrichPayload, postEnrichedPodcasts } from "./enrichment";
 
 export function startServer() {
   const app = express();
@@ -44,17 +44,18 @@ export function startServer() {
       }
 
       // Re-enrich the podcasts
-      const isAllEnriched = await enrichBatch(podcastsToEnrich, true);
+      const payload = await enrichPayload(podcastsToEnrich);
+      const isBatchPosted = await postEnrichedPodcasts(payload);
 
-      if (!isAllEnriched) {
+      if (!isBatchPosted) {
         return res
           .status(500)
-          .json({ error: "Enrichment process did not finish." });
+          .json({ error: "Failed to post re-enriched podcasts." });
       }
 
       await closeBrowser();
 
-      res.json({ success: isAllEnriched });
+      res.json({ success: isBatchPosted });
     } catch (error) {
       console.error("Error in re-enrichment process:", error);
       res
