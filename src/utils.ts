@@ -97,27 +97,3 @@ export async function saveEnrichmentState(
     throw error;
   }
 }
-
-export async function loadEnrichmentState(
-  saveFileName: string
-): Promise<EnrichmentState> {
-  try {
-    // Try to read the file
-    const jsonString = await fs.readFile(saveFileName, "utf-8");
-    const state: EnrichmentState = JSON.parse(jsonString);
-    console.log(`EnrichmentState loaded from ${saveFileName}`);
-    return state;
-  } catch (error) {
-    // If the file doesn't exist or there's an error reading it
-    console.log(`File ${saveFileName} not found. Creating default state.`);
-    const defaultState: EnrichmentState = {
-      page: 0,
-      limit: 4,
-      seenCount: 0,
-      totalCount: 0,
-    };
-    // Save the default state to the file
-    await saveEnrichmentState(defaultState, saveFileName);
-    return defaultState;
-  }
-}

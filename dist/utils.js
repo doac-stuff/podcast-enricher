@@ -45,7 +45,6 @@ exports.parseReviewCount = parseReviewCount;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
 exports.closeBrowser = closeBrowser;
 exports.saveEnrichmentState = saveEnrichmentState;
-exports.loadEnrichmentState = loadEnrichmentState;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
 const puppeteer = __importStar(require("puppeteer"));
@@ -124,30 +123,6 @@ function saveEnrichmentState(state, saveFileName) {
         catch (error) {
             console.error("Error saving EnrichmentState:", error);
             throw error;
-        }
-    });
-}
-function loadEnrichmentState(saveFileName) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            // Try to read the file
-            const jsonString = yield promises_1.default.readFile(saveFileName, "utf-8");
-            const state = JSON.parse(jsonString);
-            console.log(`EnrichmentState loaded from ${saveFileName}`);
-            return state;
-        }
-        catch (error) {
-            // If the file doesn't exist or there's an error reading it
-            console.log(`File ${saveFileName} not found. Creating default state.`);
-            const defaultState = {
-                page: 0,
-                limit: 4,
-                seenCount: 0,
-                totalCount: 0,
-            };
-            // Save the default state to the file
-            yield saveEnrichmentState(defaultState, saveFileName);
-            return defaultState;
         }
     });
 }

@@ -9,17 +9,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const api_podcastindex_1 = require("./api.podcastindex");
 const enrichment_1 = require("./enrichment");
 const server_1 = require("./server");
 const utils_1 = require("./utils");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            if ((0, api_podcastindex_1.isPodcastDbOldOrMissing)()) {
-                yield (0, api_podcastindex_1.downloadAndExtractDatabase)();
-                yield (0, api_podcastindex_1.cleanupDatabase)();
-            }
+            // if (isPodcastDbOldOrMissing()) {
+            //   await downloadAndExtractDatabase();
+            //   await cleanupDatabase();
+            // }
             (0, server_1.startServer)();
             (0, enrichment_1.enrichAll)();
         }

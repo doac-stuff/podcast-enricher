@@ -55,26 +55,27 @@ function enrichBatch(podcasts_1) {
             headers: [["Content-Type", "application/json"]],
         });
         if (res.ok) {
-            console.log(`Posted ${podcastsToEnrich.length} enriched podcasts. Result: ${yield res.text()}`);
+            console.log(`Posted ${payload.items.length} enriched podcasts. Result: ${yield res.text()}`);
             return true;
         }
         else {
-            console.log(`Failed to post ${podcastsToEnrich.length} enriched podcast. Error: ${yield res.text()}`);
+            console.log(`Failed to post ${payload.items.length} enriched podcast. Error: ${yield res.text()}`);
             return false;
         }
     });
 }
 function enrichAll() {
     return __awaiter(this, void 0, void 0, function* () {
-        const saveFileName = `enrichment_state_${utils_1.backendUrl.split("://")[1]}.json`;
-        const saveState = yield (0, utils_1.loadEnrichmentState)(saveFileName);
-        //be carefule to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
-        saveState.totalCount = yield utils_1.prisma.podcast.count({
+        //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
+        const totalCount = yield utils_1.prisma.podcast.count({
             where: {
                 dead: 0,
             },
         });
-        while (saveState.seenCount < saveState.totalCount) {
+        let page = 0;
+        const limit = 4;
+        let seenCount = 0;
+        while (true) {
             try {
                 const podcasts = yield utils_1.prisma.podcast.findMany({
                     where: {
@@ -85,24 +86,26 @@ function enrichAll() {
                         { newestItemPubdate: "desc" },
                         { id: "asc" },
                     ],
-                    skip: saveState.page * saveState.limit,
-                    take: saveState.limit,
+                    skip: page * limit,
+                    take: limit,
                 });
-                console.log(`Started enriching batch ${saveState.page + 1} with ${podcasts.length} items...`);
+                console.log(`Started enriching batch ${page + 1} with ${podcasts.length} items...`);
+                if (podcasts.length == 0) {
+                    break;
+                }
                 const enriched = yield enrichBatch(podcasts);
                 if (!enriched) {
-                    console.log(`Enrichment halted due to an error. Batch - ${saveState.page + 1}, Batch Limit - ${saveState.limit}, Progress - ${saveState.seenCount}/${saveState.totalCount}`);
+                    console.log(`Enrichment halted due to an error. Batch - ${page + 1}, Batch Limit - ${limit}, Progress - ${seenCount}/${totalCount}`);
                     process.exit(1);
                 }
-                console.log(`Finished enriching batch ${saveState.page + 1} with ${podcasts.length} items`);
-                saveState.seenCount = saveState.page * saveState.limit + podcasts.length;
-                console.log(`Enriched ${saveState.seenCount} Podcast so far out of ${saveState.totalCount}`);
-                saveState.page++;
-                yield (0, utils_1.saveEnrichmentState)(saveState, saveFileName);
+                console.log(`Finished enriching batch ${page + 1} with ${podcasts.length} items`);
+                seenCount = page * limit + podcasts.length;
+                console.log(`Enriched ${seenCount} Podcast so far out of ${totalCount}`);
+                page++;
                 yield (0, utils_1.closeBrowser)();
             }
             catch (e) {
-                console.log(`An error occured. Stopped at batch ${saveState.page + 1}. Error: ${e}`);
+                console.log(`An error occured. Stopped at batch ${page + 1}. Error: ${e}`);
                 process.exit(1);
             }
         }

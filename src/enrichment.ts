@@ -5,7 +5,6 @@ import {
   extractFromParentheses,
   extractSpotifyReview,
   fetchHydratedHtmlContent,
-  loadEnrichmentState,
   parseReviewCount,
   prisma,
   saveEnrichmentState,
@@ -74,14 +73,14 @@ export async function enrichBatch(
   if (res.ok) {
     console.log(
       `Posted ${
-        podcastsToEnrich.length
+        payload.items.length
       } enriched podcasts. Result: ${await res.text()}`
     );
     return true;
   } else {
     console.log(
       `Failed to post ${
-        podcastsToEnrich.length
+        payload.items.length
       } enriched podcast. Error: ${await res.text()}`
     );
     return false;
@@ -89,17 +88,18 @@ export async function enrichBatch(
 }
 
 export async function enrichAll() {
-  const saveFileName = `enrichment_state_${backendUrl.split("://")[1]}.json`;
-  const saveState = await loadEnrichmentState(saveFileName);
-
-  //be carefule to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
-  saveState.totalCount = await prisma.podcast.count({
+  //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
+  const totalCount = await prisma.podcast.count({
     where: {
       dead: 0,
     },
   });
 
-  while (saveState.seenCount < saveState.totalCount) {
+  let page = 0;
+  const limit = 4;
+  let seenCount = 0;
+
+  while (true) {
     try {
       const podcasts = await prisma.podcast.findMany({
         where: {
@@ -110,41 +110,35 @@ export async function enrichAll() {
           { newestItemPubdate: "desc" },
           { id: "asc" },
         ],
-        skip: saveState.page * saveState.limit,
-        take: saveState.limit,
+        skip: page * limit,
+        take: limit,
       });
       console.log(
-        `Started enriching batch ${saveState.page + 1} with ${
-          podcasts.length
-        } items...`
+        `Started enriching batch ${page + 1} with ${podcasts.length} items...`
       );
+      if (podcasts.length == 0) {
+        break;
+      }
       const enriched = await enrichBatch(podcasts);
       if (!enriched) {
         console.log(
           `Enrichment halted due to an error. Batch - ${
-            saveState.page + 1
-          }, Batch Limit - ${saveState.limit}, Progress - ${
-            saveState.seenCount
-          }/${saveState.totalCount}`
+            page + 1
+          }, Batch Limit - ${limit}, Progress - ${seenCount}/${totalCount}`
         );
         process.exit(1);
       }
       console.log(
-        `Finished enriching batch ${saveState.page + 1} with ${
-          podcasts.length
-        } items`
+        `Finished enriching batch ${page + 1} with ${podcasts.length} items`
       );
-      saveState.seenCount = saveState.page * saveState.limit + podcasts.length;
-      console.log(
-        `Enriched ${saveState.seenCount} Podcast so far out of ${saveState.totalCount}`
-      );
-      saveState.page++;
+      seenCount = page * limit + podcasts.length;
+      console.log(`Enriched ${seenCount} Podcast so far out of ${totalCount}`);
+      page++;
 
-      await saveEnrichmentState(saveState, saveFileName);
       await closeBrowser();
     } catch (e) {
       console.log(
-        `An error occured. Stopped at batch ${saveState.page + 1}. Error: ${e}`
+        `An error occured. Stopped at batch ${page + 1}. Error: ${e}`
       );
       process.exit(1);
     }
