@@ -33,15 +33,27 @@ export async function enrichPayload(
   for (let i = 0; i < podcasts.length; i++) {
     const newReportRow = { ...emptyPodcastEnriched };
     const enrichRow = async () => {
-      console.log(
-        `Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`
-      );
-      await addBasicInfo(podcasts[i], newReportRow);
-      //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
-      let shouldPush = await addSpotifyInfo(podcasts[i], newReportRow);
-      shouldPush &&= await addAppleInfo(podcasts[i], newReportRow);
-      shouldPush &&= await addYoutubeInfo(podcasts[i], newReportRow);
-      if (shouldPush) payload.items.push(newReportRow);
+      try {
+        console.log(
+          `Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`
+        );
+        await addBasicInfo(podcasts[i], newReportRow);
+        //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
+        let shouldPush = await addSpotifyInfo(podcasts[i], newReportRow);
+        shouldPush &&= await addAppleInfo(podcasts[i], newReportRow);
+        shouldPush &&= await addYoutubeInfo(podcasts[i], newReportRow);
+        if (shouldPush) {
+          payload.items.push(newReportRow);
+        } else {
+          console.log(
+            `Error enriching podcast "${podcasts[i]?.title}". Skipping...`
+          );
+        }
+      } catch (e: any) {
+        console.log(
+          `Error enriching podcast "${podcasts[i]?.title}". Skipping...`
+        );
+      }
     };
     promises.push(enrichRow());
   }

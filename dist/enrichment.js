@@ -25,14 +25,24 @@ function enrichPayload(podcasts) {
         for (let i = 0; i < podcasts.length; i++) {
             const newReportRow = Object.assign({}, model_1.emptyEnriched);
             const enrichRow = () => __awaiter(this, void 0, void 0, function* () {
-                console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
-                yield addBasicInfo(podcasts[i], newReportRow);
-                //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
-                let shouldPush = yield addSpotifyInfo(podcasts[i], newReportRow);
-                shouldPush && (shouldPush = yield addAppleInfo(podcasts[i], newReportRow));
-                shouldPush && (shouldPush = yield addYoutubeInfo(podcasts[i], newReportRow));
-                if (shouldPush)
-                    payload.items.push(newReportRow);
+                var _a, _b;
+                try {
+                    console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
+                    yield addBasicInfo(podcasts[i], newReportRow);
+                    //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
+                    let shouldPush = yield addSpotifyInfo(podcasts[i], newReportRow);
+                    shouldPush && (shouldPush = yield addAppleInfo(podcasts[i], newReportRow));
+                    shouldPush && (shouldPush = yield addYoutubeInfo(podcasts[i], newReportRow));
+                    if (shouldPush) {
+                        payload.items.push(newReportRow);
+                    }
+                    else {
+                        console.log(`Error enriching podcast "${(_a = podcasts[i]) === null || _a === void 0 ? void 0 : _a.title}". Skipping...`);
+                    }
+                }
+                catch (e) {
+                    console.log(`Error enriching podcast "${(_b = podcasts[i]) === null || _b === void 0 ? void 0 : _b.title}". Skipping...`);
+                }
             });
             promises.push(enrichRow());
         }
