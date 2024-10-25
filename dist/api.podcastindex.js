@@ -35,32 +35,34 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRecentPodcastEpisodes = getRecentPodcastEpisodes;
+exports.getLastEpisodeTitle = getLastEpisodeTitle;
 exports.downloadAndExtractDatabase = downloadAndExtractDatabase;
 exports.cleanupDatabase = cleanupDatabase;
 exports.isPodcastDbOldOrMissing = isPodcastDbOldOrMissing;
-const axios_1 = __importDefault(require("axios"));
-const utils_1 = require("./utils");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const https_1 = __importDefault(require("https"));
 const tar = __importStar(require("tar"));
 const zlib_1 = __importDefault(require("zlib"));
 const sqlite3_1 = __importDefault(require("sqlite3"));
-function getRecentPodcastEpisodes(podcast, max) {
+const rss_parser_1 = __importDefault(require("rss-parser"));
+function getLastEpisodeTitle(feedUrl) {
     return __awaiter(this, void 0, void 0, function* () {
-        const podcastIndexRecentsUrl = `https://api.podcastindex.org/api/1.0/episodes/byfeedid?id=${podcast.id}&max=${max}`;
-        const unixTime = Math.floor(Date.now() / 1000);
-        const authHeader = (0, utils_1.sha1)(`XXF5LPTCMAZMMSKTQYJ6JFwVNqbTbv#duL6kgX3P^RfPQqsKgfjm9HpTzRrP${unixTime}`);
-        const res = yield axios_1.default.get(podcastIndexRecentsUrl, {
-            headers: {
-                "X-Auth-Key": "XXF5LPTCMAZMMSKTQYJ6",
-                "User-Agent": "node-server",
-                "X-Auth-Date": unixTime,
-                Authorization: authHeader,
-            },
-        });
-        return res.data;
+        const parser = new rss_parser_1.default();
+        try {
+            const feed = yield parser.parseURL(feedUrl);
+            if (feed.items && feed.items.length > 0) {
+                const lastEpisode = feed.items[0];
+                return lastEpisode.title || null;
+            }
+            else {
+                return null;
+            }
+        }
+        catch (error) {
+            console.error("Error fetching or parsing the RSS feed:", error);
+            return null;
+        }
     });
 }
 const dbDownloadUrl = "https://public.podcastindex.org/podcastindex_feeds.db.tgz";

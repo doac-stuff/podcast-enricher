@@ -36,18 +36,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prisma = exports.backendUrl = void 0;
+exports.sleep = exports.prisma = exports.backendUrl = void 0;
 exports.sha1 = sha1;
 exports.extractSpotifyReview = extractSpotifyReview;
 exports.extractAppleReview = extractAppleReview;
 exports.extractFromParentheses = extractFromParentheses;
 exports.parseReviewCount = parseReviewCount;
+exports.extractYoutubeChannelHref = extractYoutubeChannelHref;
+exports.extractSubscriberCount = extractSubscriberCount;
+exports.extractTotalViews = extractTotalViews;
+exports.extractTotalVideos = extractTotalVideos;
+exports.extractAndRecentAverageViews = extractAndRecentAverageViews;
+exports.extractLastPublishedDate = extractLastPublishedDate;
+exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
 exports.closeBrowser = closeBrowser;
 exports.saveEnrichmentState = saveEnrichmentState;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
-const puppeteer = __importStar(require("puppeteer"));
+const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
+const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
 const promises_1 = __importDefault(require("fs/promises"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -92,16 +100,160 @@ function parseReviewCount(count) {
     }
     return parseInt(cleanCount) || 0;
 }
+function extractYoutubeChannelHref(html) {
+    const $ = cheerio.load(html);
+    const anchor = $("a.yt-simple-endpoint.style-scope.ytd-video-owner-renderer");
+    return anchor.attr("href") || null;
+}
+function extractSubscriberCount(html) {
+    const $ = cheerio.load(html);
+    const spans = $("span.yt-core-attributed-string.yt-content-metadata-view-model-wiz__metadata-text");
+    if (spans.length < 2)
+        return null;
+    const span = spans.eq(1);
+    const text = span.text().trim();
+    const match = text.match(/^([\d\.]+)([KMB])? subscribers$/i);
+    if (!match)
+        return null;
+    let [, number, suffix] = match;
+    let count = parseFloat(number);
+    switch (suffix === null || suffix === void 0 ? void 0 : suffix.toUpperCase()) {
+        case "K":
+            count *= 1000;
+            break;
+        case "M":
+            count *= 1000000;
+            break;
+        case "B":
+            count *= 1000000000;
+            break;
+        default:
+            break;
+    }
+    return Math.round(count);
+}
+function extractTotalViews(html) {
+    const $ = cheerio.load(html);
+    const elements = $("td.style-scope.ytd-about-channel-renderer");
+    if (elements.length < 16) {
+        return null;
+    }
+    const viewText = $(elements[15]).text();
+    const viewNumber = viewText.replace(/,/g, "").match(/\d+/);
+    return viewNumber ? parseInt(viewNumber[0], 10) : null;
+}
+function extractTotalVideos(html) {
+    const $ = cheerio.load(html);
+    const elements = $("td.style-scope.ytd-about-channel-renderer");
+    if (elements.length < 14) {
+        return null;
+    }
+    const viewText = $(elements[13]).text();
+    const viewNumber = viewText.replace(/,/g, "").match(/\d+/);
+    return viewNumber ? parseInt(viewNumber[0], 10) : null;
+}
+function extractAndRecentAverageViews(html) {
+    const $ = cheerio.load(html);
+    const elements = $("span.inline-metadata-item.style-scope.ytd-video-meta-block");
+    const viewCounts = [];
+    elements.each((index, element) => {
+        if (index % 2 === 0) {
+            const viewText = $(element).text();
+            const match = viewText.match(/([\d.]+)([KMB])?/i);
+            if (match) {
+                const number = parseFloat(match[1]);
+                let multiplier = 1;
+                if (match[2]) {
+                    switch (match[2].toUpperCase()) {
+                        case "K":
+                            multiplier = 1000;
+                            break;
+                        case "M":
+                            multiplier = 1000000;
+                            break;
+                        case "B":
+                            multiplier = 1000000000;
+                            break;
+                    }
+                }
+                viewCounts.push(Math.round(number * multiplier));
+            }
+        }
+    });
+    const limitedViewCounts = viewCounts.slice(0, 10);
+    const sum = limitedViewCounts.reduce((acc, val) => acc + val, 0);
+    const count = limitedViewCounts.length;
+    return sum / count;
+}
+function extractLastPublishedDate(html) {
+    // Load the HTML into Cheerio
+    const $ = cheerio.load(html);
+    // Select all <span> elements with the specified class
+    const elements = $("span.inline-metadata-item.style-scope.ytd-video-meta-block");
+    // Ensure there is at least one element to process
+    if (elements.length < 1) {
+        return null;
+    }
+    // Get the text content of the first element (index 1)
+    const timeText = $(elements[1]).text();
+    // Use a regular expression to extract the number and time unit
+    const match = timeText.match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago/i);
+    if (!match) {
+        return null;
+    }
+    const amount = parseInt(match[1], 10);
+    const unit = match[2].toLowerCase();
+    // Get the current date
+    const currentDate = new Date();
+    // Calculate the past date based on the unit
+    switch (unit) {
+        case "second":
+            currentDate.setSeconds(currentDate.getSeconds() - amount);
+            break;
+        case "minute":
+            currentDate.setMinutes(currentDate.getMinutes() - amount);
+            break;
+        case "hour":
+            currentDate.setHours(currentDate.getHours() - amount);
+            break;
+        case "day":
+            currentDate.setDate(currentDate.getDate() - amount);
+            break;
+        case "week":
+            currentDate.setDate(currentDate.getDate() - amount * 7);
+            break;
+        case "month":
+            currentDate.setMonth(currentDate.getMonth() - amount);
+            break;
+        case "year":
+            currentDate.setFullYear(currentDate.getFullYear() - amount);
+            break;
+        default:
+            return null;
+    }
+    return currentDate;
+}
+function extractSpotifyHref(html) {
+    const $ = cheerio.load(html);
+    const anchor = $('a.podcastsubscribe[aria-label="spotify-podcast"]');
+    return anchor.attr("href") || null;
+}
+// Use the stealth plugin to avoid detection
+puppeteer_extra_1.default.use((0, puppeteer_extra_plugin_stealth_1.default)());
 let browser = null;
-function fetchHydratedHtmlContent(url) {
-    return __awaiter(this, void 0, void 0, function* () {
+function fetchHydratedHtmlContent(url_1) {
+    return __awaiter(this, arguments, void 0, function* (url, action = null) {
         if (!browser) {
-            browser = yield puppeteer.launch({
+            browser = yield puppeteer_extra_1.default.launch({
                 args: ["--no-sandbox", "--disable-setuid-sandbox"],
             });
         }
         const page = yield browser.newPage();
         yield page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
+        if (action) {
+            console.log("running page action...");
+            yield action(page);
+        }
         const html = yield page.content();
         yield page.close();
         return html;
@@ -126,3 +278,5 @@ function saveEnrichmentState(state, saveFileName) {
         }
     });
 }
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+exports.sleep = sleep;

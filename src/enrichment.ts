@@ -1,13 +1,21 @@
 import {
   backendUrl,
   closeBrowser,
+  extractAndRecentAverageViews,
   extractAppleReview,
   extractFromParentheses,
+  extractLastPublishedDate,
+  extractSpotifyHref,
   extractSpotifyReview,
+  extractSubscriberCount,
+  extractTotalVideos,
+  extractTotalViews,
+  extractYoutubeChannelHref,
   fetchHydratedHtmlContent,
   parseReviewCount,
   prisma,
   saveEnrichmentState,
+  sleep,
 } from "./utils";
 import { searchSpotify } from "./api.spotify";
 import {
@@ -17,12 +25,12 @@ import {
   searchYouTube,
 } from "./api.youtube";
 import { Podcast } from "@prisma/client";
-import { getRecentPodcastEpisodes } from "./api.podcastindex";
 import {
   emptyEnriched as emptyPodcastEnriched,
   PodcastEnriched,
   PodcastsEnrichedPayload,
 } from "./model";
+import { getLastEpisodeTitle } from "./api.podcastindex";
 
 export async function enrichPayload(
   podcasts: Podcast[]
@@ -197,37 +205,60 @@ async function addSpotifyInfo(
   row: PodcastEnriched
 ): Promise<boolean> {
   try {
-    let searchResults = await searchSpotify(
-      `${podcast.title} ${podcast.itunesAuthor}`
-    );
-    if (searchResults.shows.items.length < 1 && podcast.title) {
-      // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
-      searchResults = await searchSpotify(podcast.title);
-    }
-    for (let i = 0; i < searchResults.shows.items.length; i++) {
-      const show = searchResults.shows.items[i];
-      if (!show) continue;
-      if (
-        show.name.includes(podcast.title ?? "null%") ||
-        podcast?.title?.includes(show.name)
-      ) {
+    let useSearch = false;
+    if (podcast.itunesId) {
+      try {
+        const html = await fetchHydratedHtmlContent(
+          `https://podnews.net/podcast/${podcast.itunesId}`
+        );
         console.log(
-          `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
+          `Fetched Podnews html for ${podcast.title}. It has ${html.length} characters.`
         );
-        row.spotify_url = show.external_urls.spotify;
-        const html = await fetchHydratedHtmlContent(show.external_urls.spotify);
+        const url = extractSpotifyHref(html);
+        if (url) {
+          row.spotify_url = url;
+        } else {
+          useSearch = true;
+        }
+      } catch (e) {
         console.log(
-          `Fetched Spotify html for ${show.name}. It has ${html.length} characters.`
+          `Failed to get spotify url from podnews. Error: ${e}. Will try spotify search...`
         );
-        const rating = extractSpotifyReview(html) ?? ["0", "0"];
-        console.log(`Extracted Spotify rating ${rating} for ${show.name}.`);
-        row.spotify_review_count = parseReviewCount(
-          extractFromParentheses(rating[0] ?? "")
-        );
-        row.spotify_review_score = parseFloat(rating[1] ?? "0");
-        return true;
+        useSearch = true;
       }
     }
+    if (useSearch) {
+      let searchResults = await searchSpotify(
+        `${podcast.title} ${podcast.itunesAuthor}`
+      );
+      if (searchResults.shows.items.length < 1 && podcast.title) {
+        // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
+        searchResults = await searchSpotify(podcast.title);
+      }
+      for (let i = 0; i < searchResults.shows.items.length; i++) {
+        const show = searchResults.shows.items[i];
+        if (!show) continue;
+        if (
+          show.name.includes(podcast.title ?? "null%") ||
+          podcast?.title?.includes(show.name)
+        ) {
+          console.log(
+            `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
+          );
+          row.spotify_url = show.external_urls.spotify;
+        }
+      }
+    }
+    const html = await fetchHydratedHtmlContent(row.spotify_url);
+    console.log(
+      `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
+    );
+    const rating = extractSpotifyReview(html) ?? ["0", "0"];
+    console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
+    row.spotify_review_count = parseReviewCount(
+      extractFromParentheses(rating[0] ?? "")
+    );
+    row.spotify_review_score = parseFloat(rating[1] ?? "0");
     return true;
   } catch (e) {
     console.log(
@@ -271,23 +302,23 @@ async function addYoutubeInfo(
   row: PodcastEnriched
 ): Promise<boolean> {
   try {
-    const lastEpisode = (await getRecentPodcastEpisodes(podcast, 1))?.items[0];
-    if (!lastEpisode) {
+    const lastEpisodeTitle = await getLastEpisodeTitle(podcast.url);
+    if (!lastEpisodeTitle) {
       throw new Error(
         `Failed to find an episode on podcast "${podcast.title}"`
       );
     }
     let searchResults = await searchYouTube(
-      `${lastEpisode.title} ${podcast.title}`
+      `${lastEpisodeTitle} ${podcast.title}`
     );
     if (!searchResults || !searchResults.items) {
       throw new Error(
-        `Youtube search for episode "${lastEpisode.title}" on podcast "${podcast.title}"  failed`
+        `Youtube search for episode "${lastEpisodeTitle}" on podcast "${podcast.title}"  failed`
       );
     }
     if (searchResults.items.length < 1) {
       // If there are no results on ep title + feed title, then the podcast is obscure and the ep title only should be unique enough to find it.
-      searchResults = await searchYouTube(lastEpisode.title);
+      searchResults = await searchYouTube(lastEpisodeTitle);
     }
     for (let i = 0; i < (searchResults.items?.length ?? 0); i++) {
       const result = searchResults.items[i];
@@ -296,56 +327,50 @@ async function addYoutubeInfo(
       if (
         (result?.channelTitle?.includes(podcast.title ?? "null%") ||
           podcast?.title?.includes(result?.channelTitle ?? "null%")) &&
-        (result?.title?.includes(lastEpisode.title) ||
-          lastEpisode.title.includes(result?.title ?? "null%"))
+        (result?.title?.includes(lastEpisodeTitle) ||
+          lastEpisodeTitle.includes(result?.title ?? "null%"))
       ) {
         console.log(
           `Found name title match on Youtube "${result?.channelTitle}". Adding corresponding Youtube info...`
         );
-        const videoInfo = await getVideoInfo(result?.id);
-        const channelInfo = await getChannelInfo(
-          videoInfo?.snippet?.channelId ?? ""
+        let html = await fetchHydratedHtmlContent(
+          `https://www.youtube.com/watch?v=${result?.id}`
         );
-        const recentUploads = await getVideosFromPlaylist(
-          channelInfo?.contentDetails?.relatedPlaylists?.uploads ?? "",
-          10
+        row.youtube_channel_url = `https://www.youtube.com${extractYoutubeChannelHref(
+          html
+        )}`;
+        html = await fetchHydratedHtmlContent(
+          row.youtube_channel_url,
+          async (page) => {
+            await page.evaluate(() => {
+              const button = document.querySelector(
+                'button.truncated-text-wiz__inline-button[aria-disabled="true"]'
+              );
+              if (button) {
+                (button as HTMLButtonElement).click();
+              }
+            });
+            await sleep(5000);
+          }
         );
-        row.youtube_channel_url = `https://www.youtube.com/channel/${videoInfo?.snippet?.channelId}`;
-        row.youtube_subscribers = parseInt(
-          channelInfo?.statistics?.subscriberCount ?? "0"
+        row.youtube_subscribers = extractSubscriberCount(html) ?? 0;
+        const totalViews = extractTotalViews(html);
+        const videoCount = extractTotalVideos(html);
+        row.youtube_total_episodes = videoCount ?? 0;
+        row.youtube_average_views =
+          (totalViews ?? 0) / Math.max(videoCount ?? 0, 1);
+
+        html = await fetchHydratedHtmlContent(
+          `${row.youtube_channel_url}/videos`
         );
-        const viewCount = Number.parseInt(
-          channelInfo?.statistics?.viewCount ?? "0"
-        );
-        const videoCount = Number.parseInt(
-          channelInfo?.statistics?.videoCount ?? "0"
-        );
-        row.youtube_average_views = Math.trunc(
-          videoCount === 0 ? 0 : viewCount / videoCount
-        );
-        row.youtube_total_episodes = parseInt(
-          channelInfo?.statistics?.videoCount ?? "0"
-        );
-        if (!recentUploads) return false;
+        row.youtube_recent_average_views = extractAndRecentAverageViews(html);
+        row.youtube_last_published_at =
+          extractLastPublishedDate(html) ?? new Date("1970-01-01T00:00:00Z");
+
         console.log(
-          `Got ${recentUploads.length} recent videos from ${videoInfo?.snippet?.channelTitle}`
+          `Extracted youtube channel url for ${result.channelTitle}, url: ${row.youtube_channel_url}, subscribers: ${row.youtube_subscribers}, total eps: ${videoCount}, total views: ${totalViews}, rav: ${row.youtube_recent_average_views}, lpd: ${row.youtube_last_published_at}`
         );
-        let recentViews = 0;
-        for (let i = 0; i < recentUploads.length; i++) {
-          const recentVideo = recentUploads[i];
-          const recentVideoInfo = await getVideoInfo(
-            recentVideo.snippet?.resourceId?.videoId ?? ""
-          );
-          recentViews += parseInt(
-            recentVideoInfo?.statistics?.viewCount ?? "0"
-          );
-        }
-        row.youtube_recent_average_views = Math.trunc(
-          recentUploads.length === 0 ? 0 : recentViews / recentUploads.length
-        );
-        row.youtube_last_published_at = new Date(
-          recentUploads[0].snippet?.publishedAt ?? "1970-01-01T00:00:00Z"
-        );
+
         return true;
       }
     }

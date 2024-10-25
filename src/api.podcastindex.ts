@@ -1,34 +1,29 @@
-import axios from "axios";
-import { sha1 } from "./utils";
-import { Podcast } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 import https from "https";
 import * as tar from "tar";
 import zlib from "zlib";
 import sqlite3 from "sqlite3";
-import { promisify } from "util";
+import Parser from "rss-parser";
 
-export async function getRecentPodcastEpisodes(
-  podcast: Podcast,
-  max: number
-): Promise<RecentEpisodes | null> {
-  const podcastIndexRecentsUrl = `https://api.podcastindex.org/api/1.0/episodes/byfeedid?id=${podcast.id}&max=${max}`;
-  const unixTime = Math.floor(Date.now() / 1000);
-  const authHeader = sha1(
-    `XXF5LPTCMAZMMSKTQYJ6JFwVNqbTbv#duL6kgX3P^RfPQqsKgfjm9HpTzRrP${unixTime}`
-  );
+export async function getLastEpisodeTitle(
+  feedUrl: string
+): Promise<string | null> {
+  const parser = new Parser();
 
-  const res = await axios.get(podcastIndexRecentsUrl, {
-    headers: {
-      "X-Auth-Key": "XXF5LPTCMAZMMSKTQYJ6",
-      "User-Agent": "node-server",
-      "X-Auth-Date": unixTime,
-      Authorization: authHeader,
-    },
-  });
+  try {
+    const feed = await parser.parseURL(feedUrl);
 
-  return res.data;
+    if (feed.items && feed.items.length > 0) {
+      const lastEpisode = feed.items[0];
+      return lastEpisode.title || null;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching or parsing the RSS feed:", error);
+    return null;
+  }
 }
 
 export interface RecentEpisodes {

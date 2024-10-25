@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import * as cheerio from "cheerio";
-import * as puppeteer from "puppeteer";
+import * as puppeteerns from "puppeteer";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs/promises";
 import { EnrichmentState } from "./model";
 import { PrismaClient } from "@prisma/client";
@@ -64,9 +66,207 @@ export function parseReviewCount(count: string | null): number {
   return parseInt(cleanCount) || 0;
 }
 
-let browser: puppeteer.Browser | null = null;
+export function extractYoutubeChannelHref(html: string): string | null {
+  const $ = cheerio.load(html);
 
-export async function fetchHydratedHtmlContent(url: string): Promise<string> {
+  const anchor = $("a.yt-simple-endpoint.style-scope.ytd-video-owner-renderer");
+
+  return anchor.attr("href") || null;
+}
+
+export function extractSubscriberCount(html: string): number | null {
+  const $ = cheerio.load(html);
+
+  const spans = $(
+    "span.yt-core-attributed-string.yt-content-metadata-view-model-wiz__metadata-text"
+  );
+
+  if (spans.length < 2) return null;
+  const span = spans.eq(1);
+
+  const text = span.text().trim();
+
+  const match = text.match(/^([\d\.]+)([KMB])? subscribers$/i);
+
+  if (!match) return null;
+
+  let [, number, suffix] = match;
+
+  let count = parseFloat(number);
+
+  switch (suffix?.toUpperCase()) {
+    case "K":
+      count *= 1_000;
+      break;
+    case "M":
+      count *= 1_000_000;
+      break;
+    case "B":
+      count *= 1_000_000_000;
+      break;
+    default:
+      break;
+  }
+
+  return Math.round(count);
+}
+
+export function extractTotalViews(html: string): number | null {
+  const $ = cheerio.load(html);
+
+  const elements = $("td.style-scope.ytd-about-channel-renderer");
+
+  if (elements.length < 16) {
+    return null;
+  }
+
+  const viewText = $(elements[15]).text();
+
+  const viewNumber = viewText.replace(/,/g, "").match(/\d+/);
+
+  return viewNumber ? parseInt(viewNumber[0], 10) : null;
+}
+
+export function extractTotalVideos(html: string): number | null {
+  const $ = cheerio.load(html);
+
+  const elements = $("td.style-scope.ytd-about-channel-renderer");
+
+  if (elements.length < 14) {
+    return null;
+  }
+
+  const viewText = $(elements[13]).text();
+
+  const viewNumber = viewText.replace(/,/g, "").match(/\d+/);
+
+  return viewNumber ? parseInt(viewNumber[0], 10) : null;
+}
+
+export function extractAndRecentAverageViews(html: string): number {
+  const $ = cheerio.load(html);
+
+  const elements = $(
+    "span.inline-metadata-item.style-scope.ytd-video-meta-block"
+  );
+
+  const viewCounts: number[] = [];
+
+  elements.each((index, element) => {
+    if (index % 2 === 0) {
+      const viewText = $(element).text();
+      const match = viewText.match(/([\d.]+)([KMB])?/i);
+
+      if (match) {
+        const number = parseFloat(match[1]);
+        let multiplier = 1;
+
+        if (match[2]) {
+          switch (match[2].toUpperCase()) {
+            case "K":
+              multiplier = 1_000;
+              break;
+            case "M":
+              multiplier = 1_000_000;
+              break;
+            case "B":
+              multiplier = 1_000_000_000;
+              break;
+          }
+        }
+
+        viewCounts.push(Math.round(number * multiplier));
+      }
+    }
+  });
+
+  const limitedViewCounts = viewCounts.slice(0, 10);
+
+  const sum = limitedViewCounts.reduce((acc, val) => acc + val, 0);
+  const count = limitedViewCounts.length;
+
+  return sum / count;
+}
+
+export function extractLastPublishedDate(html: string): Date | null {
+  // Load the HTML into Cheerio
+  const $ = cheerio.load(html);
+
+  // Select all <span> elements with the specified class
+  const elements = $(
+    "span.inline-metadata-item.style-scope.ytd-video-meta-block"
+  );
+
+  // Ensure there is at least one element to process
+  if (elements.length < 1) {
+    return null;
+  }
+
+  // Get the text content of the first element (index 1)
+  const timeText = $(elements[1]).text();
+
+  // Use a regular expression to extract the number and time unit
+  const match = timeText.match(
+    /(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago/i
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const amount = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+
+  // Get the current date
+  const currentDate = new Date();
+
+  // Calculate the past date based on the unit
+  switch (unit) {
+    case "second":
+      currentDate.setSeconds(currentDate.getSeconds() - amount);
+      break;
+    case "minute":
+      currentDate.setMinutes(currentDate.getMinutes() - amount);
+      break;
+    case "hour":
+      currentDate.setHours(currentDate.getHours() - amount);
+      break;
+    case "day":
+      currentDate.setDate(currentDate.getDate() - amount);
+      break;
+    case "week":
+      currentDate.setDate(currentDate.getDate() - amount * 7);
+      break;
+    case "month":
+      currentDate.setMonth(currentDate.getMonth() - amount);
+      break;
+    case "year":
+      currentDate.setFullYear(currentDate.getFullYear() - amount);
+      break;
+    default:
+      return null;
+  }
+
+  return currentDate;
+}
+
+export function extractSpotifyHref(html: string): string | null {
+  const $ = cheerio.load(html);
+
+  const anchor = $('a.podcastsubscribe[aria-label="spotify-podcast"]');
+
+  return anchor.attr("href") || null;
+}
+
+// Use the stealth plugin to avoid detection
+puppeteer.use(StealthPlugin());
+
+let browser: puppeteerns.Browser | null = null;
+
+export async function fetchHydratedHtmlContent(
+  url: string,
+  action: ((page: puppeteerns.Page) => Promise<void>) | null = null
+): Promise<string> {
   if (!browser) {
     browser = await puppeteer.launch({
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -74,6 +274,12 @@ export async function fetchHydratedHtmlContent(url: string): Promise<string> {
   }
   const page = await browser.newPage();
   await page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
+
+  if (action) {
+    console.log("running page action...");
+    await action(page);
+  }
+
   const html = await page.content();
   await page.close();
   return html;
@@ -97,3 +303,6 @@ export async function saveEnrichmentState(
     throw error;
   }
 }
+
+export const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
