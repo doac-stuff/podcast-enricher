@@ -46,11 +46,11 @@ export async function enrichPayload(
           `Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`
         );
         await addBasicInfo(podcasts[i], newReportRow);
-        //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
-        let shouldPush = await addSpotifyInfo(podcasts[i], newReportRow);
-        shouldPush ||= await addAppleInfo(podcasts[i], newReportRow);
-        shouldPush ||= await addYoutubeInfo(podcasts[i], newReportRow);
-        if (shouldPush) {
+        //at least one enrichment must be successful to push the result
+        let gotSpotify = await addSpotifyInfo(podcasts[i], newReportRow);
+        let gotApple = await addAppleInfo(podcasts[i], newReportRow);
+        let gotYoutube = await addYoutubeInfo(podcasts[i], newReportRow);
+        if (gotSpotify || gotApple || gotYoutube) {
           payload.items.push(newReportRow);
         } else {
           console.log(
@@ -252,7 +252,7 @@ async function addAppleInfo(
   row: PodcastEnriched
 ): Promise<boolean> {
   try {
-    if (!podcast.itunesId) return true;
+    if (!podcast.itunesId) return false;
     const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
     row.apple_podcast_url = url;
     const html = await fetchHydratedHtmlContent(url);
@@ -332,6 +332,7 @@ async function addYoutubeInfo(
             await sleep(5000);
           }
         );
+        console.log(`Youtube hmtl for "${result?.channelTitle}": ${html}`);
         row.youtube_subscribers = extractSubscriberCount(html) ?? 0;
         const totalViews = extractTotalViews(html);
         const videoCount = extractTotalVideos(html);

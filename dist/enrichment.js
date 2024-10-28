@@ -29,11 +29,11 @@ function enrichPayload(podcasts) {
                 try {
                     console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
                     yield addBasicInfo(podcasts[i], newReportRow);
-                    //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
-                    let shouldPush = yield addSpotifyInfo(podcasts[i], newReportRow);
-                    shouldPush || (shouldPush = yield addAppleInfo(podcasts[i], newReportRow));
-                    shouldPush || (shouldPush = yield addYoutubeInfo(podcasts[i], newReportRow));
-                    if (shouldPush) {
+                    //at least one enrichment must be successful to push the result
+                    let gotSpotify = yield addSpotifyInfo(podcasts[i], newReportRow);
+                    let gotApple = yield addAppleInfo(podcasts[i], newReportRow);
+                    let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow);
+                    if (gotSpotify || gotApple || gotYoutube) {
                         payload.items.push(newReportRow);
                     }
                     else {
@@ -203,7 +203,7 @@ function addAppleInfo(podcast, row) {
         var _a, _b, _c;
         try {
             if (!podcast.itunesId)
-                return true;
+                return false;
             const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
             row.apple_podcast_url = url;
             const html = yield (0, utils_1.fetchHydratedHtmlContent)(url);
@@ -256,6 +256,7 @@ function addYoutubeInfo(podcast, row) {
                         });
                         yield (0, utils_1.sleep)(5000);
                     }));
+                    console.log(`Youtube hmtl for "${result === null || result === void 0 ? void 0 : result.channelTitle}": ${html}`);
                     row.youtube_subscribers = (_j = (0, utils_1.extractSubscriberCount)(html)) !== null && _j !== void 0 ? _j : 0;
                     const totalViews = (0, utils_1.extractTotalViews)(html);
                     const videoCount = (0, utils_1.extractTotalVideos)(html);
