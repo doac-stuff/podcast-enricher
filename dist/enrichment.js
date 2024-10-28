@@ -31,8 +31,8 @@ function enrichPayload(podcasts) {
                     yield addBasicInfo(podcasts[i], newReportRow);
                     //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
                     let shouldPush = yield addSpotifyInfo(podcasts[i], newReportRow);
-                    shouldPush && (shouldPush = yield addAppleInfo(podcasts[i], newReportRow));
-                    shouldPush && (shouldPush = yield addYoutubeInfo(podcasts[i], newReportRow));
+                    shouldPush || (shouldPush = yield addAppleInfo(podcasts[i], newReportRow));
+                    shouldPush || (shouldPush = yield addYoutubeInfo(podcasts[i], newReportRow));
                     if (shouldPush) {
                         payload.items.push(newReportRow);
                     }
@@ -168,48 +168,29 @@ function addSpotifyInfo(podcast, row) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e;
         try {
-            let useSearch = false;
-            if (podcast.itunesId) {
-                try {
-                    const html = yield (0, utils_1.fetchHydratedHtmlContent)(`https://podnews.net/podcast/${podcast.itunesId}`);
-                    console.log(`Fetched Podnews html for ${podcast.title}. It has ${html.length} characters.`);
-                    const url = (0, utils_1.extractSpotifyHref)(html);
-                    if (url) {
-                        row.spotify_url = url;
-                    }
-                    else {
-                        useSearch = true;
-                    }
-                }
-                catch (e) {
-                    console.log(`Failed to get spotify url from podnews. Error: ${e}. Will try spotify search...`);
-                    useSearch = true;
+            let searchResults = yield (0, api_spotify_1.searchSpotify)(`${podcast.title} ${podcast.itunesAuthor}`);
+            if (searchResults.shows.items.length < 1 && podcast.title) {
+                // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
+                searchResults = yield (0, api_spotify_1.searchSpotify)(podcast.title);
+            }
+            for (let i = 0; i < searchResults.shows.items.length; i++) {
+                const show = searchResults.shows.items[i];
+                if (!show)
+                    continue;
+                if (show.name.includes((_a = podcast.title) !== null && _a !== void 0 ? _a : "null%") ||
+                    ((_b = podcast === null || podcast === void 0 ? void 0 : podcast.title) === null || _b === void 0 ? void 0 : _b.includes(show.name))) {
+                    console.log(`Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`);
+                    row.spotify_url = show.external_urls.spotify;
+                    const html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url);
+                    console.log(`Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`);
+                    const rating = (_c = (0, utils_1.extractSpotifyReview)(html)) !== null && _c !== void 0 ? _c : ["0", "0"];
+                    console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
+                    row.spotify_review_count = (0, utils_1.parseReviewCount)((0, utils_1.extractFromParentheses)((_d = rating[0]) !== null && _d !== void 0 ? _d : ""));
+                    row.spotify_review_score = parseFloat((_e = rating[1]) !== null && _e !== void 0 ? _e : "0");
+                    return true;
                 }
             }
-            if (useSearch) {
-                let searchResults = yield (0, api_spotify_1.searchSpotify)(`${podcast.title} ${podcast.itunesAuthor}`);
-                if (searchResults.shows.items.length < 1 && podcast.title) {
-                    // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
-                    searchResults = yield (0, api_spotify_1.searchSpotify)(podcast.title);
-                }
-                for (let i = 0; i < searchResults.shows.items.length; i++) {
-                    const show = searchResults.shows.items[i];
-                    if (!show)
-                        continue;
-                    if (show.name.includes((_a = podcast.title) !== null && _a !== void 0 ? _a : "null%") ||
-                        ((_b = podcast === null || podcast === void 0 ? void 0 : podcast.title) === null || _b === void 0 ? void 0 : _b.includes(show.name))) {
-                        console.log(`Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`);
-                        row.spotify_url = show.external_urls.spotify;
-                    }
-                }
-            }
-            const html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url);
-            console.log(`Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`);
-            const rating = (_c = (0, utils_1.extractSpotifyReview)(html)) !== null && _c !== void 0 ? _c : ["0", "0"];
-            console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
-            row.spotify_review_count = (0, utils_1.parseReviewCount)((0, utils_1.extractFromParentheses)((_d = rating[0]) !== null && _d !== void 0 ? _d : ""));
-            row.spotify_review_score = parseFloat((_e = rating[1]) !== null && _e !== void 0 ? _e : "0");
-            return true;
+            return false;
         }
         catch (e) {
             console.log(`Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`);
