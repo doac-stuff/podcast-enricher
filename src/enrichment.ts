@@ -48,8 +48,8 @@ export async function enrichPayload(
         await addBasicInfo(podcasts[i], newReportRow);
         //some error conditions during scraping may mark the scrape as essentially failed meaning the podcast item should be skipped so that it can be retried later.
         let shouldPush = await addSpotifyInfo(podcasts[i], newReportRow);
-        shouldPush &&= await addAppleInfo(podcasts[i], newReportRow);
-        shouldPush &&= await addYoutubeInfo(podcasts[i], newReportRow);
+        shouldPush ||= await addAppleInfo(podcasts[i], newReportRow);
+        shouldPush ||= await addYoutubeInfo(podcasts[i], newReportRow);
         if (shouldPush) {
           payload.items.push(newReportRow);
         } else {
@@ -205,61 +205,40 @@ async function addSpotifyInfo(
   row: PodcastEnriched
 ): Promise<boolean> {
   try {
-    let useSearch = false;
-    if (podcast.itunesId) {
-      try {
-        const html = await fetchHydratedHtmlContent(
-          `https://podnews.net/podcast/${podcast.itunesId}`
-        );
+    let searchResults = await searchSpotify(
+      `${podcast.title} ${podcast.itunesAuthor}`
+    );
+    if (searchResults.shows.items.length < 1 && podcast.title) {
+      // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
+      searchResults = await searchSpotify(podcast.title);
+    }
+    for (let i = 0; i < searchResults.shows.items.length; i++) {
+      const show = searchResults.shows.items[i];
+      if (!show) continue;
+      if (
+        show.name.includes(podcast.title ?? "null%") ||
+        podcast?.title?.includes(show.name)
+      ) {
         console.log(
-          `Fetched Podnews html for ${podcast.title}. It has ${html.length} characters.`
+          `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
         );
-        const url = extractSpotifyHref(html);
-        if (url) {
-          row.spotify_url = url;
-        } else {
-          useSearch = true;
-        }
-      } catch (e) {
+        row.spotify_url = show.external_urls.spotify;
+        const html = await fetchHydratedHtmlContent(row.spotify_url);
         console.log(
-          `Failed to get spotify url from podnews. Error: ${e}. Will try spotify search...`
+          `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
         );
-        useSearch = true;
+        const rating = extractSpotifyReview(html) ?? ["0", "0"];
+        console.log(
+          `Extracted Spotify rating ${rating} for "${podcast.title}".`
+        );
+        row.spotify_review_count = parseReviewCount(
+          extractFromParentheses(rating[0] ?? "")
+        );
+        row.spotify_review_score = parseFloat(rating[1] ?? "0");
+        return true;
       }
     }
-    if (useSearch) {
-      let searchResults = await searchSpotify(
-        `${podcast.title} ${podcast.itunesAuthor}`
-      );
-      if (searchResults.shows.items.length < 1 && podcast.title) {
-        // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
-        searchResults = await searchSpotify(podcast.title);
-      }
-      for (let i = 0; i < searchResults.shows.items.length; i++) {
-        const show = searchResults.shows.items[i];
-        if (!show) continue;
-        if (
-          show.name.includes(podcast.title ?? "null%") ||
-          podcast?.title?.includes(show.name)
-        ) {
-          console.log(
-            `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
-          );
-          row.spotify_url = show.external_urls.spotify;
-        }
-      }
-    }
-    const html = await fetchHydratedHtmlContent(row.spotify_url);
-    console.log(
-      `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
-    );
-    const rating = extractSpotifyReview(html) ?? ["0", "0"];
-    console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
-    row.spotify_review_count = parseReviewCount(
-      extractFromParentheses(rating[0] ?? "")
-    );
-    row.spotify_review_score = parseFloat(rating[1] ?? "0");
-    return true;
+    return false;
   } catch (e) {
     console.log(
       `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
