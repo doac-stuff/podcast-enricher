@@ -332,7 +332,6 @@ async function addYoutubeInfo(
             await sleep(5000);
           }
         );
-        console.log(`Youtube hmtl for "${result?.channelTitle}": ${html}`);
         row.youtube_subscribers = extractSubscriberCount(html) ?? 0;
         const totalViews = extractTotalViews(html);
         const videoCount = extractTotalVideos(html);

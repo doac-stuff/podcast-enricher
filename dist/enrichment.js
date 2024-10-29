@@ -256,7 +256,6 @@ function addYoutubeInfo(podcast, row) {
                         });
                         yield (0, utils_1.sleep)(5000);
                     }));
-                    console.log(`Youtube hmtl for "${result === null || result === void 0 ? void 0 : result.channelTitle}": ${html}`);
                     row.youtube_subscribers = (_j = (0, utils_1.extractSubscriberCount)(html)) !== null && _j !== void 0 ? _j : 0;
                     const totalViews = (0, utils_1.extractTotalViews)(html);
                     const videoCount = (0, utils_1.extractTotalVideos)(html);
