@@ -7,6 +7,7 @@ import fs from "fs/promises";
 import { PrismaClient } from "@prisma/client";
 import env from "dotenv";
 import { MeasurementState } from "./model";
+import path from "node:path";
 
 env.config();
 
@@ -185,7 +186,7 @@ export function extractAndRecentAverageViews(html: string): number {
   const sum = limitedViewCounts.reduce((acc, val) => acc + val, 0);
   const count = limitedViewCounts.length;
 
-  return sum / count;
+  return sum / Math.max(count, 1);
 }
 
 export function extractLastPublishedDate(html: string): Date | null {
@@ -277,12 +278,31 @@ export async function fetchHydratedHtmlContent(
 
   if (action) {
     console.log("running page action...");
-    await action(page);
+    try {
+      await action(page);
+    } catch (e) {
+      console.log(e);
+    }
+    // await page.screenshot({
+    //   path: path.resolve(process.cwd(), `screenshot-${url.split("@")[1]}.png`),
+    // });
   }
 
   const html = await page.content();
   await page.close();
   return html;
+}
+
+export async function clickMoreButtonAndWaitForPopup(page: puppeteerns.Page) {
+  const buttonSelector = "button.truncated-text-wiz__absolute-button";
+
+  await page.waitForSelector(buttonSelector, { visible: true });
+
+  await page.click(buttonSelector);
+
+  const popupIndicatorSelector =
+    'span.yt-core-attributed-string span[style=""]';
+  await page.waitForSelector(popupIndicatorSelector, { visible: true });
 }
 
 export async function closeBrowser() {
