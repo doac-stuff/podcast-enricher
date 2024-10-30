@@ -1,5 +1,6 @@
 import {
   backendUrl,
+  clickMoreButtonAndWaitForPopup,
   closeBrowser,
   extractAndRecentAverageViews,
   extractAppleReview,
@@ -320,17 +321,7 @@ async function addYoutubeInfo(
         )}`;
         html = await fetchHydratedHtmlContent(
           row.youtube_channel_url,
-          async (page) => {
-            await page.evaluate(() => {
-              const button = document.querySelector(
-                'button.truncated-text-wiz__inline-button[aria-disabled="true"]'
-              );
-              if (button) {
-                (button as HTMLButtonElement).click();
-              }
-            });
-            await sleep(5000);
-          }
+          clickMoreButtonAndWaitForPopup
         );
         row.youtube_subscribers = extractSubscriberCount(html) ?? 0;
         const totalViews = extractTotalViews(html);

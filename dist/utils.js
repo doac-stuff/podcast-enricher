@@ -50,6 +50,7 @@ exports.extractAndRecentAverageViews = extractAndRecentAverageViews;
 exports.extractLastPublishedDate = extractLastPublishedDate;
 exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
+exports.clickMoreButtonAndWaitForPopup = clickMoreButtonAndWaitForPopup;
 exports.closeBrowser = closeBrowser;
 exports.saveEnrichmentState = saveEnrichmentState;
 const crypto_1 = __importDefault(require("crypto"));
@@ -183,7 +184,7 @@ function extractAndRecentAverageViews(html) {
     const limitedViewCounts = viewCounts.slice(0, 10);
     const sum = limitedViewCounts.reduce((acc, val) => acc + val, 0);
     const count = limitedViewCounts.length;
-    return sum / count;
+    return sum / Math.max(count, 1);
 }
 function extractLastPublishedDate(html) {
     // Load the HTML into Cheerio
@@ -252,11 +253,28 @@ function fetchHydratedHtmlContent(url_1) {
         yield page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
         if (action) {
             console.log("running page action...");
-            yield action(page);
+            try {
+                yield action(page);
+            }
+            catch (e) {
+                console.log(e);
+            }
+            // await page.screenshot({
+            //   path: path.resolve(process.cwd(), `screenshot-${url.split("@")[1]}.png`),
+            // });
         }
         const html = yield page.content();
         yield page.close();
         return html;
+    });
+}
+function clickMoreButtonAndWaitForPopup(page) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const buttonSelector = "button.truncated-text-wiz__absolute-button";
+        yield page.waitForSelector(buttonSelector, { visible: true });
+        yield page.click(buttonSelector);
+        const popupIndicatorSelector = 'span.yt-core-attributed-string span[style=""]';
+        yield page.waitForSelector(popupIndicatorSelector, { visible: true });
     });
 }
 function closeBrowser() {

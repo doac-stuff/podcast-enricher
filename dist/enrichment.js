@@ -247,15 +247,7 @@ function addYoutubeInfo(podcast, row) {
                     console.log(`Found name title match on Youtube "${result === null || result === void 0 ? void 0 : result.channelTitle}". Adding corresponding Youtube info...`);
                     let html = yield (0, utils_1.fetchHydratedHtmlContent)(`https://www.youtube.com/watch?v=${result === null || result === void 0 ? void 0 : result.id}`);
                     row.youtube_channel_url = `https://www.youtube.com${(0, utils_1.extractYoutubeChannelHref)(html)}`;
-                    html = yield (0, utils_1.fetchHydratedHtmlContent)(row.youtube_channel_url, (page) => __awaiter(this, void 0, void 0, function* () {
-                        yield page.evaluate(() => {
-                            const button = document.querySelector('button.truncated-text-wiz__inline-button[aria-disabled="true"]');
-                            if (button) {
-                                button.click();
-                            }
-                        });
-                        yield (0, utils_1.sleep)(5000);
-                    }));
+                    html = yield (0, utils_1.fetchHydratedHtmlContent)(row.youtube_channel_url, utils_1.clickMoreButtonAndWaitForPopup);
                     row.youtube_subscribers = (_j = (0, utils_1.extractSubscriberCount)(html)) !== null && _j !== void 0 ? _j : 0;
                     const totalViews = (0, utils_1.extractTotalViews)(html);
                     const videoCount = (0, utils_1.extractTotalVideos)(html);
