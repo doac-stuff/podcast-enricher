@@ -4,9 +4,9 @@ import * as puppeteerns from "puppeteer";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs/promises";
-import { EnrichmentState } from "./model";
 import { PrismaClient } from "@prisma/client";
 import env from "dotenv";
+import { MeasurementState } from "./model";
 
 env.config();
 
@@ -290,17 +290,39 @@ export async function closeBrowser() {
   browser = null;
 }
 
-export async function saveEnrichmentState(
-  state: EnrichmentState,
+export async function saveMeasurementState(
+  state: MeasurementState,
   saveFileName: string
 ): Promise<void> {
   try {
     const jsonString = JSON.stringify(state, null, 2);
     await fs.writeFile(saveFileName, jsonString, "utf-8");
-    console.log(`EnrichmentState saved to ${saveFileName}`);
+    console.log(`MeasurementState saved to ${saveFileName}`);
   } catch (error) {
-    console.error("Error saving EnrichmentState:", error);
+    console.error("Error saving MeasurementState:", error);
     throw error;
+  }
+}
+
+export async function loadMeasurementState(
+  loadFileName: string
+): Promise<MeasurementState> {
+  try {
+    const fileContent = await fs.readFile(loadFileName, "utf-8");
+    const state: MeasurementState = JSON.parse(fileContent);
+    console.log(`MeasurementState loaded from ${loadFileName}`);
+    return state;
+  } catch (error) {
+    console.warn(
+      `File not found: ${loadFileName}. Creating a new MeasurementState.`
+    );
+    const emptyState: MeasurementState = {
+      start: new Date(),
+      count: 0,
+      end: null,
+    };
+    await saveMeasurementState(emptyState, loadFileName);
+    return emptyState;
   }
 }
 

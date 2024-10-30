@@ -56,9 +56,8 @@ export interface PodcastsEnrichedPayload {
   items: PodcastEnriched[];
 }
 
-export interface EnrichmentState {
-  page: number;
-  limit: number;
-  seenCount: number;
-  totalCount: number;
+export interface MeasurementState {
+  start: Date;
+  count: number;
+  end: Date | null;
 }

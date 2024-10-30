@@ -17,6 +17,11 @@ const api_spotify_1 = require("./api.spotify");
 const api_youtube_1 = require("./api.youtube");
 const model_1 = require("./model");
 const api_podcastindex_1 = require("./api.podcastindex");
+let measurementState = {
+    start: new Date(),
+    count: 0,
+    end: null,
+};
 function enrichPayload(podcasts) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`Enriching payload with ${podcasts.length} podcasts...`);
@@ -35,6 +40,9 @@ function enrichPayload(podcasts) {
                     let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow);
                     if (gotSpotify || gotApple || gotYoutube) {
                         payload.items.push(newReportRow);
+                        if (!measurementState.end) {
+                            measurementState = Object.assign(Object.assign({}, measurementState), { count: measurementState.count + 1 });
+                        }
                     }
                     else {
                         console.log(`Error enriching podcast "${(_a = podcasts[i]) === null || _a === void 0 ? void 0 : _a.title}". Skipping...`);
@@ -47,6 +55,7 @@ function enrichPayload(podcasts) {
             promises.push(enrichRow());
         }
         yield Promise.all(promises);
+        (0, utils_1.saveMeasurementState)(measurementState, "ms.json");
         return payload;
     });
 }
@@ -83,6 +92,7 @@ function filterUnseenPodcasts(podcasts) {
 }
 function enrichAll() {
     return __awaiter(this, void 0, void 0, function* () {
+        measurementState = yield (0, utils_1.loadMeasurementState)("ms.json");
         //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
         const totalCount = yield utils_1.prisma.podcast.count({
             where: {
@@ -166,7 +176,7 @@ function addBasicInfo(podcast, row) {
 }
 function addSpotifyInfo(podcast, row) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f;
         try {
             let searchResults = yield (0, api_spotify_1.searchSpotify)(`${podcast.title} ${podcast.itunesAuthor}`);
             if (searchResults.shows.items.length < 1 && podcast.title) {
@@ -193,6 +203,9 @@ function addSpotifyInfo(podcast, row) {
             return false;
         }
         catch (e) {
+            if (((_f = e === null || e === void 0 ? void 0 : e.response) === null || _f === void 0 ? void 0 : _f.status) === 429) {
+                measurementState.end = new Date();
+            }
             console.log(`Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`);
             return false;
         }

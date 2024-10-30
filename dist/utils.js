@@ -51,7 +51,8 @@ exports.extractLastPublishedDate = extractLastPublishedDate;
 exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
 exports.closeBrowser = closeBrowser;
-exports.saveEnrichmentState = saveEnrichmentState;
+exports.saveMeasurementState = saveMeasurementState;
+exports.loadMeasurementState = loadMeasurementState;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
 const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
@@ -265,16 +266,36 @@ function closeBrowser() {
         browser = null;
     });
 }
-function saveEnrichmentState(state, saveFileName) {
+function saveMeasurementState(state, saveFileName) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const jsonString = JSON.stringify(state, null, 2);
             yield promises_1.default.writeFile(saveFileName, jsonString, "utf-8");
-            console.log(`EnrichmentState saved to ${saveFileName}`);
+            console.log(`MeasurementState saved to ${saveFileName}`);
         }
         catch (error) {
-            console.error("Error saving EnrichmentState:", error);
+            console.error("Error saving MeasurementState:", error);
             throw error;
+        }
+    });
+}
+function loadMeasurementState(loadFileName) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const fileContent = yield promises_1.default.readFile(loadFileName, "utf-8");
+            const state = JSON.parse(fileContent);
+            console.log(`MeasurementState loaded from ${loadFileName}`);
+            return state;
+        }
+        catch (error) {
+            console.warn(`File not found: ${loadFileName}. Creating a new MeasurementState.`);
+            const emptyState = {
+                start: new Date(),
+                count: 0,
+                end: null,
+            };
+            yield saveMeasurementState(emptyState, loadFileName);
+            return emptyState;
         }
     });
 }

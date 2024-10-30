@@ -12,9 +12,10 @@ import {
   extractTotalViews,
   extractYoutubeChannelHref,
   fetchHydratedHtmlContent,
+  loadMeasurementState,
   parseReviewCount,
   prisma,
-  saveEnrichmentState,
+  saveMeasurementState,
   sleep,
 } from "./utils";
 import { searchSpotify } from "./api.spotify";
@@ -27,11 +28,17 @@ import {
 import { Podcast } from "@prisma/client";
 import {
   emptyEnriched as emptyPodcastEnriched,
+  MeasurementState,
   PodcastEnriched,
   PodcastsEnrichedPayload,
 } from "./model";
 import { getLastEpisodeTitle } from "./api.podcastindex";
 
+let measurementState: MeasurementState = {
+  start: new Date(),
+  count: 0,
+  end: null,
+};
 export async function enrichPayload(
   podcasts: Podcast[]
 ): Promise<PodcastsEnrichedPayload> {
@@ -52,6 +59,12 @@ export async function enrichPayload(
         let gotYoutube = await addYoutubeInfo(podcasts[i], newReportRow);
         if (gotSpotify || gotApple || gotYoutube) {
           payload.items.push(newReportRow);
+          if (!measurementState.end) {
+            measurementState = {
+              ...measurementState,
+              count: measurementState.count + 1,
+            };
+          }
         } else {
           console.log(
             `Error enriching podcast "${podcasts[i]?.title}". Skipping...`
@@ -66,6 +79,7 @@ export async function enrichPayload(
     promises.push(enrichRow());
   }
   await Promise.all(promises);
+  saveMeasurementState(measurementState, "ms.json");
   return payload;
 }
 
@@ -108,6 +122,7 @@ async function filterUnseenPodcasts(podcasts: Podcast[]) {
 }
 
 export async function enrichAll() {
+  measurementState = await loadMeasurementState("ms.json");
   //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
   const totalCount = await prisma.podcast.count({
     where: {
@@ -239,7 +254,10 @@ async function addSpotifyInfo(
       }
     }
     return false;
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.response?.status === 429) {
+      measurementState.end = new Date();
+    }
     console.log(
       `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
     );
