@@ -14,7 +14,7 @@ async function main() {
       await cleanupDatabase();
     }
     startServer();
-    // enrichAll();
+    enrichAll();
   } catch (e) {
     console.error(`Error starting up enricher: ${e}`);
   }
