@@ -285,7 +285,7 @@ export async function fetchHydratedHtmlContent(
       console.log(e);
     }
     await page.screenshot({
-      path: `screenshot-${url.split("@")}`,
+      path: `screenshot-${url.split("@")[1]}`,
     });
   }
 

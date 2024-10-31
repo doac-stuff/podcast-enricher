@@ -262,7 +262,7 @@ function fetchHydratedHtmlContent(url_1) {
                 console.log(e);
             }
             yield page.screenshot({
-                path: `screenshot-${url.split("@")}`,
+                path: `screenshot-${url.split("@")[1]}`,
             });
         }
         const html = yield page.content();
