@@ -247,6 +247,7 @@ function fetchHydratedHtmlContent(url_1) {
     return __awaiter(this, arguments, void 0, function* (url, action = null) {
         if (!browser) {
             browser = yield puppeteer_extra_1.default.launch({
+                headless: false,
                 args: ["--no-sandbox", "--disable-setuid-sandbox"],
             });
         }

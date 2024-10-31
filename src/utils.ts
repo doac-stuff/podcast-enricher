@@ -270,6 +270,7 @@ export async function fetchHydratedHtmlContent(
 ): Promise<string> {
   if (!browser) {
     browser = await puppeteer.launch({
+      headless: false,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
   }
