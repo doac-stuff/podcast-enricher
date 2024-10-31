@@ -61,7 +61,6 @@ const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extr
 const promises_1 = __importDefault(require("fs/promises"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
-const node_path_1 = __importDefault(require("node:path"));
 dotenv_1.default.config();
 exports.backendUrl = (_a = process.env.BACKEND_URL) !== null && _a !== void 0 ? _a : "";
 exports.prisma = new client_1.PrismaClient();
@@ -261,9 +260,6 @@ function fetchHydratedHtmlContent(url_1) {
             catch (e) {
                 console.log(e);
             }
-            yield page.screenshot({
-                path: node_path_1.default.resolve(process.cwd(), `screenshot-${url.split("@")[1]}.png`),
-            });
         }
         const html = yield page.content();
         yield page.close();

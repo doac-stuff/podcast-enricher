@@ -283,9 +283,6 @@ export async function fetchHydratedHtmlContent(
     } catch (e) {
       console.log(e);
     }
-    await page.screenshot({
-      path: path.resolve(process.cwd(), `screenshot-${url.split("@")[1]}.png`),
-    });
   }
 
   const html = await page.content();
