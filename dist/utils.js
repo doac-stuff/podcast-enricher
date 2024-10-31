@@ -247,7 +247,7 @@ function fetchHydratedHtmlContent(url_1) {
     return __awaiter(this, arguments, void 0, function* (url, action = null) {
         if (!browser) {
             browser = yield puppeteer_extra_1.default.launch({
-                headless: false,
+                headless: true,
                 args: ["--no-sandbox", "--disable-setuid-sandbox"],
             });
         }
@@ -261,6 +261,9 @@ function fetchHydratedHtmlContent(url_1) {
             catch (e) {
                 console.log(e);
             }
+            yield page.screenshot({
+                path: `screenshot-${url.split("@")}`,
+            });
         }
         const html = yield page.content();
         yield page.close();

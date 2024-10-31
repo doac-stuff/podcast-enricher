@@ -270,7 +270,7 @@ export async function fetchHydratedHtmlContent(
 ): Promise<string> {
   if (!browser) {
     browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
   }
@@ -284,6 +284,9 @@ export async function fetchHydratedHtmlContent(
     } catch (e) {
       console.log(e);
     }
+    await page.screenshot({
+      path: `screenshot-${url.split("@")}`,
+    });
   }
 
   const html = await page.content();
