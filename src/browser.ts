@@ -10,10 +10,8 @@ export async function waitForBrowser(): Promise<puppeteer.Browser> {
     browserPromise = puppeteer
       .launch({
         headless: true,
-        executablePath:
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-        userDataDir:
-          "C:\\Users\\Timi\\AppData\\Local\\Google\\Chrome\\User Data",
+        executablePath: process.env.CHROME_EXEC_PATH,
+        userDataDir: process.env.CHROME_DATA_PATH,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       })
       .then((launchedBrowser) => {
