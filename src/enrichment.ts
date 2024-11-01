@@ -1,11 +1,9 @@
 import {
   backendUrl,
-  clickMoreButtonAndWaitForPopup,
   extractAndRecentAverageViews,
   extractAppleReview,
   extractFromParentheses,
   extractLastPublishedDate,
-  extractSpotifyHref,
   extractSpotifyReview,
   extractSubscriberCount,
   extractTotalVideos,
@@ -16,15 +14,9 @@ import {
   parseReviewCount,
   prisma,
   saveMeasurementState,
-  sleep,
 } from "./utils";
 import { searchSpotify } from "./api.spotify";
-import {
-  getChannelInfo,
-  getVideoInfo,
-  getVideosFromPlaylist,
-  searchYouTube,
-} from "./api.youtube";
+import { searchYouTube } from "./api.youtube";
 import { Podcast } from "@prisma/client";
 import {
   emptyEnriched as emptyPodcastEnriched,
