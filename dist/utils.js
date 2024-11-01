@@ -51,16 +51,14 @@ exports.extractLastPublishedDate = extractLastPublishedDate;
 exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
 exports.clickMoreButtonAndWaitForPopup = clickMoreButtonAndWaitForPopup;
-exports.closeBrowser = closeBrowser;
 exports.saveMeasurementState = saveMeasurementState;
 exports.loadMeasurementState = loadMeasurementState;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
-const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
-const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
 const promises_1 = __importDefault(require("fs/promises"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
+const browser_1 = require("./browser");
 dotenv_1.default.config();
 exports.backendUrl = (_a = process.env.BACKEND_URL) !== null && _a !== void 0 ? _a : "";
 exports.prisma = new client_1.PrismaClient();
@@ -114,7 +112,7 @@ function extractSubscriberCount(html) {
         return null;
     const span = spans.eq(1);
     const text = span.text().trim();
-    const match = text.match(/^([\d\.]+)([KMB])? subscribers$/i);
+    const match = text.match(/^([\d\.]+)([KMB])? subscriber(s)?$/i);
     if (!match)
         return null;
     let [, number, suffix] = match;
@@ -146,13 +144,30 @@ function extractTotalViews(html) {
 }
 function extractTotalVideos(html) {
     const $ = cheerio.load(html);
-    const elements = $("td.style-scope.ytd-about-channel-renderer");
-    if (elements.length < 14) {
+    const spans = $("span.yt-core-attributed-string.yt-content-metadata-view-model-wiz__metadata-text");
+    if (spans.length < 3)
         return null;
+    const span = spans.eq(2);
+    const text = span.text().trim();
+    const match = text.match(/^([\d\.]+)([KMB])? video(s)?$/i);
+    if (!match)
+        return null;
+    let [, number, suffix] = match;
+    let count = parseFloat(number);
+    switch (suffix === null || suffix === void 0 ? void 0 : suffix.toUpperCase()) {
+        case "K":
+            count *= 1000;
+            break;
+        case "M":
+            count *= 1000000;
+            break;
+        case "B":
+            count *= 1000000000;
+            break;
+        default:
+            break;
     }
-    const viewText = $(elements[13]).text();
-    const viewNumber = viewText.replace(/,/g, "").match(/\d+/);
-    return viewNumber ? parseInt(viewNumber[0], 10) : null;
+    return Math.round(count);
 }
 function extractAndRecentAverageViews(html) {
     const $ = cheerio.load(html);
@@ -240,17 +255,9 @@ function extractSpotifyHref(html) {
     const anchor = $('a.podcastsubscribe[aria-label="spotify-podcast"]');
     return anchor.attr("href") || null;
 }
-// Use the stealth plugin to avoid detection
-puppeteer_extra_1.default.use((0, puppeteer_extra_plugin_stealth_1.default)());
-let browser = null;
-function fetchHydratedHtmlContent(url_1) {
-    return __awaiter(this, arguments, void 0, function* (url, action = null) {
-        if (!browser) {
-            browser = yield puppeteer_extra_1.default.launch({
-                headless: true,
-                args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            });
-        }
+function fetchHydratedHtmlContent(url, action) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const browser = yield (0, browser_1.waitForBrowser)();
         const page = yield browser.newPage();
         yield page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
         if (action) {
@@ -261,9 +268,6 @@ function fetchHydratedHtmlContent(url_1) {
             catch (e) {
                 console.log(e);
             }
-            yield page.screenshot({
-                path: `screenshot-${url.split("@")[1]}`,
-            });
         }
         const html = yield page.content();
         yield page.close();
@@ -277,12 +281,6 @@ function clickMoreButtonAndWaitForPopup(page) {
         yield page.click(buttonSelector);
         const popupIndicatorSelector = 'span.yt-core-attributed-string span[style=""]';
         yield page.waitForSelector(popupIndicatorSelector, { visible: true });
-    });
-}
-function closeBrowser() {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield (browser === null || browser === void 0 ? void 0 : browser.close());
-        browser = null;
     });
 }
 function saveMeasurementState(state, saveFileName) {

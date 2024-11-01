@@ -1,13 +1,11 @@
+import * as puppeteer from "puppeteer-core";
 import crypto from "crypto";
 import * as cheerio from "cheerio";
-import * as puppeteerns from "puppeteer";
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs/promises";
 import { PrismaClient } from "@prisma/client";
 import env from "dotenv";
 import { MeasurementState } from "./model";
-import path from "node:path";
+import { waitForBrowser } from "./browser";
 
 env.config();
 
@@ -87,7 +85,7 @@ export function extractSubscriberCount(html: string): number | null {
 
   const text = span.text().trim();
 
-  const match = text.match(/^([\d\.]+)([KMB])? subscribers$/i);
+  const match = text.match(/^([\d\.]+)([KMB])? subscriber(s)?$/i);
 
   if (!match) return null;
 
@@ -131,17 +129,38 @@ export function extractTotalViews(html: string): number | null {
 export function extractTotalVideos(html: string): number | null {
   const $ = cheerio.load(html);
 
-  const elements = $("td.style-scope.ytd-about-channel-renderer");
+  const spans = $(
+    "span.yt-core-attributed-string.yt-content-metadata-view-model-wiz__metadata-text"
+  );
 
-  if (elements.length < 14) {
-    return null;
+  if (spans.length < 3) return null;
+  const span = spans.eq(2);
+
+  const text = span.text().trim();
+
+  const match = text.match(/^([\d\.]+)([KMB])? video(s)?$/i);
+
+  if (!match) return null;
+
+  let [, number, suffix] = match;
+
+  let count = parseFloat(number);
+
+  switch (suffix?.toUpperCase()) {
+    case "K":
+      count *= 1_000;
+      break;
+    case "M":
+      count *= 1_000_000;
+      break;
+    case "B":
+      count *= 1_000_000_000;
+      break;
+    default:
+      break;
   }
 
-  const viewText = $(elements[13]).text();
-
-  const viewNumber = viewText.replace(/,/g, "").match(/\d+/);
-
-  return viewNumber ? parseInt(viewNumber[0], 10) : null;
+  return Math.round(count);
 }
 
 export function extractAndRecentAverageViews(html: string): number {
@@ -259,21 +278,11 @@ export function extractSpotifyHref(html: string): string | null {
   return anchor.attr("href") || null;
 }
 
-// Use the stealth plugin to avoid detection
-puppeteer.use(StealthPlugin());
-
-let browser: puppeteerns.Browser | null = null;
-
 export async function fetchHydratedHtmlContent(
   url: string,
-  action: ((page: puppeteerns.Page) => Promise<void>) | null = null
+  action: (page: puppeteer.Page) => Promise<void>
 ): Promise<string> {
-  if (!browser) {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-  }
+  const browser = await waitForBrowser();
   const page = await browser.newPage();
   await page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
 
@@ -284,9 +293,6 @@ export async function fetchHydratedHtmlContent(
     } catch (e) {
       console.log(e);
     }
-    await page.screenshot({
-      path: `screenshot-${url.split("@")[1]}`,
-    });
   }
 
   const html = await page.content();
@@ -294,7 +300,7 @@ export async function fetchHydratedHtmlContent(
   return html;
 }
 
-export async function clickMoreButtonAndWaitForPopup(page: puppeteerns.Page) {
+export async function clickMoreButtonAndWaitForPopup(page: puppeteer.Page) {
   const buttonSelector = "button.truncated-text-wiz__absolute-button";
 
   await page.waitForSelector(buttonSelector, { visible: true });
@@ -304,11 +310,6 @@ export async function clickMoreButtonAndWaitForPopup(page: puppeteerns.Page) {
   const popupIndicatorSelector =
     'span.yt-core-attributed-string span[style=""]';
   await page.waitForSelector(popupIndicatorSelector, { visible: true });
-}
-
-export async function closeBrowser() {
-  await browser?.close();
-  browser = null;
 }
 
 export async function saveMeasurementState(

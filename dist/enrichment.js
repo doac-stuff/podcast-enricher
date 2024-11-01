@@ -136,7 +136,6 @@ function enrichAll() {
                 seenCount = page * limit + podcasts.length;
                 console.log(`Processed ${seenCount} podcasts so far out of ${totalCount}`);
                 page++;
-                yield (0, utils_1.closeBrowser)();
             }
             catch (e) {
                 console.log(`An error occured. Stopped at batch ${page + 1}. Error: ${e}`);
@@ -191,7 +190,10 @@ function addSpotifyInfo(podcast, row) {
                     ((_b = podcast === null || podcast === void 0 ? void 0 : podcast.title) === null || _b === void 0 ? void 0 : _b.includes(show.name))) {
                     console.log(`Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`);
                     row.spotify_url = show.external_urls.spotify;
-                    const html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url);
+                    const html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url, (page) => __awaiter(this, void 0, void 0, function* () {
+                        const reviewSelector = ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+                        yield page.waitForSelector(reviewSelector, { visible: true });
+                    }));
                     console.log(`Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`);
                     const rating = (_c = (0, utils_1.extractSpotifyReview)(html)) !== null && _c !== void 0 ? _c : ["0", "0"];
                     console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
@@ -219,7 +221,10 @@ function addAppleInfo(podcast, row) {
                 return false;
             const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
             row.apple_podcast_url = url;
-            const html = yield (0, utils_1.fetchHydratedHtmlContent)(url);
+            const html = yield (0, utils_1.fetchHydratedHtmlContent)(url, (page) => __awaiter(this, void 0, void 0, function* () {
+                const reviewSelector = "li.svelte-11a0tog";
+                yield page.waitForSelector(reviewSelector, { visible: true });
+            }));
             console.log(`Fetched Apple podcast html for ${podcast.title}. It has ${html.length} characters.`);
             const rating = (_a = (0, utils_1.extractAppleReview)(html)) !== null && _a !== void 0 ? _a : ["No Rating"];
             console.log(`Extracted Apple podcast rating ${rating} for ${podcast.title}.`);
@@ -258,16 +263,28 @@ function addYoutubeInfo(podcast, row) {
                     (((_g = result === null || result === void 0 ? void 0 : result.title) === null || _g === void 0 ? void 0 : _g.includes(lastEpisodeTitle)) ||
                         lastEpisodeTitle.includes((_h = result === null || result === void 0 ? void 0 : result.title) !== null && _h !== void 0 ? _h : "null%"))) {
                     console.log(`Found name title match on Youtube "${result === null || result === void 0 ? void 0 : result.channelTitle}". Adding corresponding Youtube info...`);
-                    let html = yield (0, utils_1.fetchHydratedHtmlContent)(`https://www.youtube.com/watch?v=${result === null || result === void 0 ? void 0 : result.id}`);
+                    let html = yield (0, utils_1.fetchHydratedHtmlContent)(`https://www.youtube.com/watch?v=${result === null || result === void 0 ? void 0 : result.id}`, (page) => __awaiter(this, void 0, void 0, function* () {
+                        const hrefSelector = "a.yt-simple-endpoint.style-scope.ytd-video-owner-renderer";
+                        yield page.waitForSelector(hrefSelector, { visible: true });
+                    }));
                     row.youtube_channel_url = `https://www.youtube.com${(0, utils_1.extractYoutubeChannelHref)(html)}`;
-                    html = yield (0, utils_1.fetchHydratedHtmlContent)(row.youtube_channel_url, utils_1.clickMoreButtonAndWaitForPopup);
+                    //don't bother with the popup for now. we won't get total views but that is okay
+                    html = yield (0, utils_1.fetchHydratedHtmlContent)(row.youtube_channel_url, (page) => __awaiter(this, void 0, void 0, function* () {
+                        const detailsSelector = "span.yt-core-attributed-string.yt-content-metadata-view-model-wiz__metadata-text";
+                        yield page.waitForSelector(detailsSelector, { visible: true });
+                    })
+                    //clickMoreButtonAndWaitForPopup
+                    );
                     row.youtube_subscribers = (_j = (0, utils_1.extractSubscriberCount)(html)) !== null && _j !== void 0 ? _j : 0;
                     const totalViews = (0, utils_1.extractTotalViews)(html);
                     const videoCount = (0, utils_1.extractTotalVideos)(html);
                     row.youtube_total_episodes = videoCount !== null && videoCount !== void 0 ? videoCount : 0;
                     row.youtube_average_views =
                         (totalViews !== null && totalViews !== void 0 ? totalViews : 0) / Math.max(videoCount !== null && videoCount !== void 0 ? videoCount : 0, 1);
-                    html = yield (0, utils_1.fetchHydratedHtmlContent)(`${row.youtube_channel_url}/videos`);
+                    html = yield (0, utils_1.fetchHydratedHtmlContent)(`${row.youtube_channel_url}/videos`, (page) => __awaiter(this, void 0, void 0, function* () {
+                        const ravSelector = "span.inline-metadata-item.style-scope.ytd-video-meta-block";
+                        yield page.waitForSelector(ravSelector, { visible: true });
+                    }));
                     row.youtube_recent_average_views = (0, utils_1.extractAndRecentAverageViews)(html);
                     row.youtube_last_published_at =
                         (_k = (0, utils_1.extractLastPublishedDate)(html)) !== null && _k !== void 0 ? _k : new Date("1970-01-01T00:00:00Z");

@@ -56,7 +56,6 @@ function startServer() {
                     .status(500)
                     .json({ error: "Failed to post re-enriched podcasts." });
             }
-            yield (0, utils_1.closeBrowser)();
             res.json({ success: isBatchPosted });
         }
         catch (error) {

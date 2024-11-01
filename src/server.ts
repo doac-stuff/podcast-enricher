@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import { PodcastEnriched } from "./model";
-import { closeBrowser, prisma } from "./utils";
+import { prisma } from "./utils";
 import { enrichPayload, postEnrichedPodcasts } from "./enrichment";
 
 export function startServer() {
@@ -52,8 +52,6 @@ export function startServer() {
           .status(500)
           .json({ error: "Failed to post re-enriched podcasts." });
       }
-
-      await closeBrowser();
 
       res.json({ success: isBatchPosted });
     } catch (error) {

@@ -21,7 +21,10 @@ const globals_1 = require("@jest/globals");
         expect((0, utils_1.extractSpotifyReview)(html)[1]).toBeNull();
     });
     test("extracts content from span within larger HTML", () => __awaiter(void 0, void 0, void 0, function* () {
-        const html = yield (0, utils_1.fetchHydratedHtmlContent)("https://open.spotify.com/show/2BAjN7DBH8Kr90QRrUv8tM");
+        const html = yield (0, utils_1.fetchHydratedHtmlContent)("https://open.spotify.com/show/2BAjN7DBH8Kr90QRrUv8tM", (page) => __awaiter(void 0, void 0, void 0, function* () {
+            const reviewSelector = ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+            yield page.waitForSelector(reviewSelector, { visible: true });
+        }));
         // Confirm the actual rating of this show by following the link above.
         expect((0, utils_1.extractSpotifyReview)(html)[1]).toBe("4.8");
     }), 30000);

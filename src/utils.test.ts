@@ -15,7 +15,12 @@ describe("extractSpotifyRating", () => {
 
   test("extracts content from span within larger HTML", async () => {
     const html = await fetchHydratedHtmlContent(
-      "https://open.spotify.com/show/2BAjN7DBH8Kr90QRrUv8tM"
+      "https://open.spotify.com/show/2BAjN7DBH8Kr90QRrUv8tM",
+      async (page) => {
+        const reviewSelector =
+          ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+        await page.waitForSelector(reviewSelector, { visible: true });
+      }
     );
     // Confirm the actual rating of this show by following the link above.
     expect(extractSpotifyReview(html)[1]).toBe("4.8");
