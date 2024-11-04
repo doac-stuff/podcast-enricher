@@ -1,63 +1,57 @@
 export interface PodcastEnriched {
   id: number;
   podcast_index_id: number | null;
-  podcast_name: string;
-  language: string;
-  podcast_description: string;
-  rss_feed_url: string;
-  rss_categories: string;
-  rss_total_episodes: number;
-  host: string;
-  author: string;
-  owner: string;
-  spotify_url: string;
-  spotify_review_count: number;
-  spotify_review_score: number;
-  apple_podcast_url: string;
-  apple_review_count: number;
-  apple_review_score: number;
-  youtube_channel_url: string;
-  youtube_subscribers: number;
-  youtube_average_views: number;
-  youtube_total_episodes: number;
-  youtube_recent_average_views: number;
-  youtube_last_published_at: Date;
+  podcast_name: string | null;
+  language: string | null;
+  podcast_description: string | null;
+  rss_feed_url: string | null;
+  rss_categories: string | null;
+  rss_total_episodes: number | null;
+  host: string | null;
+  author: string | null;
+  owner: string | null;
+  spotify_url: string | null;
+  spotify_review_count: number | null;
+  spotify_review_score: number | null;
+  apple_podcast_url: string | null;
+  apple_review_count: number | null;
+  apple_review_score: number | null;
+  youtube_channel_url: string | null;
+  youtube_subscribers: number | null;
+  youtube_average_views: number | null;
+  youtube_total_episodes: number | null;
+  youtube_recent_average_views: number | null;
+  youtube_last_published_at: Date | null;
   stale: boolean;
 }
 
 export const emptyEnriched: PodcastEnriched = {
-  id: -1, //Id of -1 will make the backend create a new entry
+  id: -1, // Id of -1 will make the backend create a new entry
   podcast_index_id: null,
-  podcast_name: "",
-  language: "",
-  podcast_description: "",
-  rss_feed_url: "",
-  rss_categories: "",
-  rss_total_episodes: 0,
-  host: "",
-  author: "",
-  owner: "",
-  spotify_url: "",
-  spotify_review_count: 0,
-  spotify_review_score: 0,
-  apple_podcast_url: "",
-  apple_review_count: 0,
-  apple_review_score: 0,
-  youtube_channel_url: "",
-  youtube_subscribers: 0,
-  youtube_average_views: 0,
-  youtube_total_episodes: 0,
-  youtube_recent_average_views: 0,
-  youtube_last_published_at: new Date("1970-01-01T00:00:00Z"),
+  podcast_name: null,
+  language: null,
+  podcast_description: null,
+  rss_feed_url: null,
+  rss_categories: null,
+  rss_total_episodes: null,
+  host: null,
+  author: null,
+  owner: null,
+  spotify_url: null,
+  spotify_review_count: null,
+  spotify_review_score: null,
+  apple_podcast_url: null,
+  apple_review_count: null,
+  apple_review_score: null,
+  youtube_channel_url: null,
+  youtube_subscribers: null,
+  youtube_average_views: null,
+  youtube_total_episodes: null,
+  youtube_recent_average_views: null,
+  youtube_last_published_at: null,
   stale: false,
 };
 
 export interface PodcastsEnrichedPayload {
   items: PodcastEnriched[];
-}
-
-export interface MeasurementState {
-  start: Date;
-  count: number;
-  end: Date | null;
 }

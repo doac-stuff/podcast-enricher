@@ -2,6 +2,7 @@ import {
   backendUrl,
   extractAndRecentAverageViews,
   extractAppleReview,
+  extractFirstResultLink,
   extractFromParentheses,
   extractLastPublishedDate,
   extractSpotifyReview,
@@ -10,27 +11,20 @@ import {
   extractTotalViews,
   extractYoutubeChannelHref,
   fetchHydratedHtmlContent,
-  loadMeasurementState,
+  generateGoogleSearchUrl,
   parseReviewCount,
   prisma,
-  saveMeasurementState,
 } from "./utils";
 import { searchSpotify } from "./api.spotify";
 import { searchYouTube } from "./api.youtube";
 import { Podcast } from "@prisma/client";
 import {
   emptyEnriched as emptyPodcastEnriched,
-  MeasurementState,
   PodcastEnriched,
   PodcastsEnrichedPayload,
 } from "./model";
 import { getLastEpisodeTitle } from "./api.podcastindex";
 
-let measurementState: MeasurementState = {
-  start: new Date(),
-  count: 0,
-  end: null,
-};
 export async function enrichPayload(
   podcasts: Podcast[]
 ): Promise<PodcastsEnrichedPayload> {
@@ -46,17 +40,11 @@ export async function enrichPayload(
         );
         await addBasicInfo(podcasts[i], newReportRow);
         //at least one enrichment must be successful to push the result
-        let gotSpotify = await addSpotifyInfo(podcasts[i], newReportRow);
+        let gotSpotify = await addSpotifyInfoV1(podcasts[i], newReportRow);
         let gotApple = await addAppleInfo(podcasts[i], newReportRow);
         let gotYoutube = await addYoutubeInfo(podcasts[i], newReportRow);
         if (gotSpotify || gotApple || gotYoutube) {
           payload.items.push(newReportRow);
-          if (!measurementState.end) {
-            measurementState = {
-              ...measurementState,
-              count: measurementState.count + 1,
-            };
-          }
         } else {
           console.log(
             `Error enriching podcast "${podcasts[i]?.title}". Skipping...`
@@ -71,7 +59,6 @@ export async function enrichPayload(
     promises.push(enrichRow());
   }
   await Promise.all(promises);
-  saveMeasurementState(measurementState, "ms.json");
   return payload;
 }
 
@@ -114,7 +101,6 @@ async function filterUnseenPodcasts(podcasts: Podcast[]) {
 }
 
 export async function enrichAll() {
-  measurementState = await loadMeasurementState("ms.json");
   //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
   const totalCount = await prisma.podcast.count({
     where: {
@@ -205,7 +191,7 @@ async function addBasicInfo(podcast: Podcast, row: PodcastEnriched) {
   row.owner = podcast.itunesOwnerName;
 }
 
-async function addSpotifyInfo(
+async function addSpotifyInfoV1(
   podcast: Podcast,
   row: PodcastEnriched
 ): Promise<boolean> {
@@ -252,13 +238,99 @@ async function addSpotifyInfo(
     }
     return false;
   } catch (e: any) {
-    if (e?.response?.status === 429) {
-      measurementState.end = new Date();
-    }
     console.log(
       `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
     );
     return false;
+  }
+}
+
+async function addSpotifyInfoV2(
+  podcast: Podcast,
+  row: PodcastEnriched
+): Promise<boolean> {
+  try {
+    //first try a google search
+    const searchUrl = generateGoogleSearchUrl(
+      `"${podcast.title}" "all episodes" "follow" "about" spotify podcast`
+    );
+    let html = await fetchHydratedHtmlContent(searchUrl, async (page) => {
+      const resultSelector = "div.yuRUbf";
+      await page.waitForSelector(resultSelector, { visible: true });
+    });
+    const link = extractFirstResultLink(html);
+    console.log(
+      `Following link ${link} to find Spotify show "${podcast.title}". Adding corresponding Spotify info...`
+    );
+    row.spotify_url = link ?? "";
+    html = await fetchHydratedHtmlContent(row.spotify_url, async (page) => {
+      const reviewSelector =
+        ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+      await page.waitForSelector(reviewSelector, { visible: true });
+    });
+    console.log(
+      `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
+    );
+    const rating = extractSpotifyReview(html) ?? ["0", "0"];
+    console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
+    row.spotify_review_count = parseReviewCount(
+      extractFromParentheses(rating[0] ?? "")
+    );
+    row.spotify_review_score = parseFloat(rating[1] ?? "0");
+    return true;
+  } catch (e: any) {
+    try {
+      console.log(
+        `Google search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`
+      );
+      //the try a spotify search
+      let searchResults = await searchSpotify(
+        `${podcast.title} ${podcast.itunesAuthor}`
+      );
+      if (searchResults.shows.items.length < 1 && podcast.title) {
+        // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
+        searchResults = await searchSpotify(podcast.title);
+      }
+      for (let i = 0; i < searchResults.shows.items.length; i++) {
+        const show = searchResults.shows.items[i];
+        if (!show) continue;
+        if (
+          show.name.includes(podcast.title ?? "null%") ||
+          podcast?.title?.includes(show.name)
+        ) {
+          console.log(
+            `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
+          );
+          row.spotify_url = show.external_urls.spotify;
+          const html = await fetchHydratedHtmlContent(
+            row.spotify_url,
+            async (page) => {
+              const reviewSelector =
+                ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+              await page.waitForSelector(reviewSelector, { visible: true });
+            }
+          );
+          console.log(
+            `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
+          );
+          const rating = extractSpotifyReview(html) ?? ["0", "0"];
+          console.log(
+            `Extracted Spotify rating ${rating} for "${podcast.title}".`
+          );
+          row.spotify_review_count = parseReviewCount(
+            extractFromParentheses(rating[0] ?? "")
+          );
+          row.spotify_review_score = parseFloat(rating[1] ?? "0");
+          return true;
+        }
+      }
+      return false;
+    } catch (e: any) {
+      console.log(
+        `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
+      );
+      return false;
+    }
   }
 }
 

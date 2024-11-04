@@ -4,7 +4,6 @@ import * as cheerio from "cheerio";
 import fs from "fs/promises";
 import { PrismaClient } from "@prisma/client";
 import env from "dotenv";
-import { MeasurementState } from "./model";
 import { waitForBrowser } from "./browser";
 
 env.config();
@@ -284,20 +283,21 @@ export async function fetchHydratedHtmlContent(
 ): Promise<string> {
   const browser = await waitForBrowser();
   const page = await browser.newPage();
-  await page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
+  try {
+    await page.goto(url, { timeout: 120000 });
 
-  if (action) {
-    console.log("running page action...");
-    try {
+    if (action) {
+      console.log("Running page action...");
       await action(page);
-    } catch (e) {
-      console.log(e);
     }
-  }
 
-  const html = await page.content();
-  await page.close();
-  return html;
+    const html = await page.content();
+    await page.close();
+    return html;
+  } catch (e) {
+    await page.close();
+    throw e;
+  }
 }
 
 export async function clickMoreButtonAndWaitForPopup(page: puppeteer.Page) {
@@ -312,40 +312,16 @@ export async function clickMoreButtonAndWaitForPopup(page: puppeteer.Page) {
   await page.waitForSelector(popupIndicatorSelector, { visible: true });
 }
 
-export async function saveMeasurementState(
-  state: MeasurementState,
-  saveFileName: string
-): Promise<void> {
-  try {
-    const jsonString = JSON.stringify(state, null, 2);
-    await fs.writeFile(saveFileName, jsonString, "utf-8");
-    console.log(`MeasurementState saved to ${saveFileName}`);
-  } catch (error) {
-    console.error("Error saving MeasurementState:", error);
-    throw error;
-  }
+export function generateGoogleSearchUrl(query: string): string {
+  const baseUrl = "https://www.google.com/search";
+  const encodedQuery = encodeURIComponent(query);
+  return `${baseUrl}?q=${encodedQuery}`;
 }
 
-export async function loadMeasurementState(
-  loadFileName: string
-): Promise<MeasurementState> {
-  try {
-    const fileContent = await fs.readFile(loadFileName, "utf-8");
-    const state: MeasurementState = JSON.parse(fileContent);
-    console.log(`MeasurementState loaded from ${loadFileName}`);
-    return state;
-  } catch (error) {
-    console.warn(
-      `File not found: ${loadFileName}. Creating a new MeasurementState.`
-    );
-    const emptyState: MeasurementState = {
-      start: new Date(),
-      count: 0,
-      end: null,
-    };
-    await saveMeasurementState(emptyState, loadFileName);
-    return emptyState;
-  }
+export function extractFirstResultLink(html: string): string | null {
+  const $ = cheerio.load(html);
+  const firstResult = $("div.yuRUbf a").first().attr("href");
+  return firstResult || null;
 }
 
 export const sleep = (ms: number) =>

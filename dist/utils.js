@@ -51,11 +51,10 @@ exports.extractLastPublishedDate = extractLastPublishedDate;
 exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
 exports.clickMoreButtonAndWaitForPopup = clickMoreButtonAndWaitForPopup;
-exports.saveMeasurementState = saveMeasurementState;
-exports.loadMeasurementState = loadMeasurementState;
+exports.generateGoogleSearchUrl = generateGoogleSearchUrl;
+exports.extractFirstResultLink = extractFirstResultLink;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
-const promises_1 = __importDefault(require("fs/promises"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
 const browser_1 = require("./browser");
@@ -259,19 +258,20 @@ function fetchHydratedHtmlContent(url, action) {
     return __awaiter(this, void 0, void 0, function* () {
         const browser = yield (0, browser_1.waitForBrowser)();
         const page = yield browser.newPage();
-        yield page.goto(url, { timeout: 120000, waitUntil: "networkidle2" });
-        if (action) {
-            console.log("running page action...");
-            try {
+        try {
+            yield page.goto(url, { timeout: 120000 });
+            if (action) {
+                console.log("Running page action...");
                 yield action(page);
             }
-            catch (e) {
-                console.log(e);
-            }
+            const html = yield page.content();
+            yield page.close();
+            return html;
         }
-        const html = yield page.content();
-        yield page.close();
-        return html;
+        catch (e) {
+            yield page.close();
+            throw e;
+        }
     });
 }
 function clickMoreButtonAndWaitForPopup(page) {
@@ -283,38 +283,15 @@ function clickMoreButtonAndWaitForPopup(page) {
         yield page.waitForSelector(popupIndicatorSelector, { visible: true });
     });
 }
-function saveMeasurementState(state, saveFileName) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const jsonString = JSON.stringify(state, null, 2);
-            yield promises_1.default.writeFile(saveFileName, jsonString, "utf-8");
-            console.log(`MeasurementState saved to ${saveFileName}`);
-        }
-        catch (error) {
-            console.error("Error saving MeasurementState:", error);
-            throw error;
-        }
-    });
+function generateGoogleSearchUrl(query) {
+    const baseUrl = "https://www.google.com/search";
+    const encodedQuery = encodeURIComponent(query);
+    return `${baseUrl}?q=${encodedQuery}`;
 }
-function loadMeasurementState(loadFileName) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const fileContent = yield promises_1.default.readFile(loadFileName, "utf-8");
-            const state = JSON.parse(fileContent);
-            console.log(`MeasurementState loaded from ${loadFileName}`);
-            return state;
-        }
-        catch (error) {
-            console.warn(`File not found: ${loadFileName}. Creating a new MeasurementState.`);
-            const emptyState = {
-                start: new Date(),
-                count: 0,
-                end: null,
-            };
-            yield saveMeasurementState(emptyState, loadFileName);
-            return emptyState;
-        }
-    });
+function extractFirstResultLink(html) {
+    const $ = cheerio.load(html);
+    const firstResult = $("div.yuRUbf a").first().attr("href");
+    return firstResult || null;
 }
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 exports.sleep = sleep;

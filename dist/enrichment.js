@@ -17,11 +17,6 @@ const api_spotify_1 = require("./api.spotify");
 const api_youtube_1 = require("./api.youtube");
 const model_1 = require("./model");
 const api_podcastindex_1 = require("./api.podcastindex");
-let measurementState = {
-    start: new Date(),
-    count: 0,
-    end: null,
-};
 function enrichPayload(podcasts) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`Enriching payload with ${podcasts.length} podcasts...`);
@@ -35,14 +30,11 @@ function enrichPayload(podcasts) {
                     console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
                     yield addBasicInfo(podcasts[i], newReportRow);
                     //at least one enrichment must be successful to push the result
-                    let gotSpotify = yield addSpotifyInfo(podcasts[i], newReportRow);
+                    let gotSpotify = yield addSpotifyInfoV1(podcasts[i], newReportRow);
                     let gotApple = yield addAppleInfo(podcasts[i], newReportRow);
                     let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow);
                     if (gotSpotify || gotApple || gotYoutube) {
                         payload.items.push(newReportRow);
-                        if (!measurementState.end) {
-                            measurementState = Object.assign(Object.assign({}, measurementState), { count: measurementState.count + 1 });
-                        }
                     }
                     else {
                         console.log(`Error enriching podcast "${(_a = podcasts[i]) === null || _a === void 0 ? void 0 : _a.title}". Skipping...`);
@@ -55,7 +47,6 @@ function enrichPayload(podcasts) {
             promises.push(enrichRow());
         }
         yield Promise.all(promises);
-        (0, utils_1.saveMeasurementState)(measurementState, "ms.json");
         return payload;
     });
 }
@@ -92,7 +83,6 @@ function filterUnseenPodcasts(podcasts) {
 }
 function enrichAll() {
     return __awaiter(this, void 0, void 0, function* () {
-        measurementState = yield (0, utils_1.loadMeasurementState)("ms.json");
         //be careful to ensure that the filters for this count are the same as the filters for the podcasts that get enriched
         const totalCount = yield utils_1.prisma.podcast.count({
             where: {
@@ -173,9 +163,9 @@ function addBasicInfo(podcast, row) {
         row.owner = podcast.itunesOwnerName;
     });
 }
-function addSpotifyInfo(podcast, row) {
+function addSpotifyInfoV1(podcast, row) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e;
         try {
             let searchResults = yield (0, api_spotify_1.searchSpotify)(`${podcast.title} ${podcast.itunesAuthor}`);
             if (searchResults.shows.items.length < 1 && podcast.title) {
@@ -205,11 +195,70 @@ function addSpotifyInfo(podcast, row) {
             return false;
         }
         catch (e) {
-            if (((_f = e === null || e === void 0 ? void 0 : e.response) === null || _f === void 0 ? void 0 : _f.status) === 429) {
-                measurementState.end = new Date();
-            }
             console.log(`Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`);
             return false;
+        }
+    });
+}
+function addSpotifyInfoV2(podcast, row) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c, _d, _e, _f, _g, _h;
+        try {
+            //first try a google search
+            const searchUrl = (0, utils_1.generateGoogleSearchUrl)(`"${podcast.title}" "all episodes" "follow" "about" spotify podcast`);
+            let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
+                const resultSelector = "div.yuRUbf";
+                yield page.waitForSelector(resultSelector, { visible: true });
+            }));
+            const link = (0, utils_1.extractFirstResultLink)(html);
+            console.log(`Following link ${link} to find Spotify show "${podcast.title}". Adding corresponding Spotify info...`);
+            row.spotify_url = link !== null && link !== void 0 ? link : "";
+            html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url, (page) => __awaiter(this, void 0, void 0, function* () {
+                const reviewSelector = ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+                yield page.waitForSelector(reviewSelector, { visible: true });
+            }));
+            console.log(`Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`);
+            const rating = (_a = (0, utils_1.extractSpotifyReview)(html)) !== null && _a !== void 0 ? _a : ["0", "0"];
+            console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
+            row.spotify_review_count = (0, utils_1.parseReviewCount)((0, utils_1.extractFromParentheses)((_b = rating[0]) !== null && _b !== void 0 ? _b : ""));
+            row.spotify_review_score = parseFloat((_c = rating[1]) !== null && _c !== void 0 ? _c : "0");
+            return true;
+        }
+        catch (e) {
+            try {
+                console.log(`Google search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`);
+                //the try a spotify search
+                let searchResults = yield (0, api_spotify_1.searchSpotify)(`${podcast.title} ${podcast.itunesAuthor}`);
+                if (searchResults.shows.items.length < 1 && podcast.title) {
+                    // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
+                    searchResults = yield (0, api_spotify_1.searchSpotify)(podcast.title);
+                }
+                for (let i = 0; i < searchResults.shows.items.length; i++) {
+                    const show = searchResults.shows.items[i];
+                    if (!show)
+                        continue;
+                    if (show.name.includes((_d = podcast.title) !== null && _d !== void 0 ? _d : "null%") ||
+                        ((_e = podcast === null || podcast === void 0 ? void 0 : podcast.title) === null || _e === void 0 ? void 0 : _e.includes(show.name))) {
+                        console.log(`Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`);
+                        row.spotify_url = show.external_urls.spotify;
+                        const html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url, (page) => __awaiter(this, void 0, void 0, function* () {
+                            const reviewSelector = ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+                            yield page.waitForSelector(reviewSelector, { visible: true });
+                        }));
+                        console.log(`Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`);
+                        const rating = (_f = (0, utils_1.extractSpotifyReview)(html)) !== null && _f !== void 0 ? _f : ["0", "0"];
+                        console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
+                        row.spotify_review_count = (0, utils_1.parseReviewCount)((0, utils_1.extractFromParentheses)((_g = rating[0]) !== null && _g !== void 0 ? _g : ""));
+                        row.spotify_review_score = parseFloat((_h = rating[1]) !== null && _h !== void 0 ? _h : "0");
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch (e) {
+                console.log(`Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`);
+                return false;
+            }
         }
     });
 }

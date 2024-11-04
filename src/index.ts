@@ -4,7 +4,7 @@ import {
   isPodcastDbOldOrMissing,
 } from "./api.podcastindex";
 import { enrichAll } from "./enrichment";
-import { startServer } from "./server";
+import { startReEnricher } from "./reenrichment";
 import { prisma } from "./utils";
 
 async function main() {
@@ -13,8 +13,8 @@ async function main() {
       await downloadAndExtractDatabase();
       await cleanupDatabase();
     }
-    startServer();
-    enrichAll();
+    startReEnricher();
+    // enrichAll();
   } catch (e) {
     console.error(`Error starting up enricher: ${e}`);
   }
