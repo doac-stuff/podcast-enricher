@@ -62,6 +62,7 @@ function startReEnricher() {
             isReEnriching = false;
         });
     }
+    reEnrichAll();
     const app = (0, express_1.default)();
     const port = process.env.PORT;
     app.use(body_parser_1.default.json());

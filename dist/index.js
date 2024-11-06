@@ -9,16 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const api_podcastindex_1 = require("./api.podcastindex");
 const reenrichment_1 = require("./reenrichment");
 const utils_1 = require("./utils");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            if ((0, api_podcastindex_1.isPodcastDbOldOrMissing)()) {
-                yield (0, api_podcastindex_1.downloadAndExtractDatabase)();
-                yield (0, api_podcastindex_1.cleanupDatabase)();
-            }
+            // if (isPodcastDbOldOrMissing()) {
+            //   await downloadAndExtractDatabase();
+            //   await cleanupDatabase();
+            // }
             (0, reenrichment_1.startReEnricher)();
             // enrichAll();
         }

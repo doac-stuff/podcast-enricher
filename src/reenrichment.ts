@@ -62,6 +62,8 @@ export function startReEnricher() {
     isReEnriching = false;
   }
 
+  reEnrichAll();
+
   const app = express();
   const port = process.env.PORT;
 
