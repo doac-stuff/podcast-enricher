@@ -9,12 +9,12 @@ import { prisma } from "./utils";
 
 async function main() {
   try {
-    // if (isPodcastDbOldOrMissing()) {
-    //   await downloadAndExtractDatabase();
-    //   await cleanupDatabase();
-    // }
+    if (isPodcastDbOldOrMissing()) {
+      await downloadAndExtractDatabase();
+      await cleanupDatabase();
+    }
     startReEnricher();
-    // enrichAll();
+    enrichAll();
   } catch (e) {
     console.error(`Error starting up enricher: ${e}`);
   }
