@@ -241,6 +241,12 @@ async function addSpotifyInfoV1(
     console.log(
       `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
     );
+    if (`${e}`.toLowerCase().includes("protocol error")) {
+      console.log(
+        "Protocol error is most likely caused by a browser crash. Exiting app..."
+      );
+      process.exit(1);
+    }
     return false;
   }
 }
@@ -329,6 +335,12 @@ async function addSpotifyInfoV2(
       console.log(
         `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
       );
+      if (`${e}`.toLowerCase().includes("protocol error")) {
+        console.log(
+          "Protocol error is most likely caused by a browser crash. Exiting app..."
+        );
+        process.exit(1);
+      }
       return false;
     }
   }
@@ -362,6 +374,12 @@ async function addAppleInfo(
     console.log(
       `Failed to add Apple info to podcast "${podcast.title}". Error: ${e}`
     );
+    if (`${e}`.toLowerCase().includes("protocol error")) {
+      console.log(
+        "Protocol error is most likely caused by a browser crash. Exiting app..."
+      );
+      process.exit(1);
+    }
     return false;
   }
 }
@@ -454,6 +472,12 @@ async function addYoutubeInfo(
     console.log(
       `Failed to add Youtube info to podcast "${podcast.title}". Error: ${e}`
     );
+    if (`${e}`.toLowerCase().includes("protocol error")) {
+      console.log(
+        "Protocol error is most likely caused by a browser crash. Exiting app..."
+      );
+      process.exit(1);
+    }
     return false;
   }
 }

@@ -196,6 +196,10 @@ function addSpotifyInfoV1(podcast, row) {
         }
         catch (e) {
             console.log(`Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`);
+            if (`${e}`.toLowerCase().includes("protocol error")) {
+                console.log("Protocol error is most likely caused by a browser crash. Exiting app...");
+                process.exit(1);
+            }
             return false;
         }
     });
@@ -257,6 +261,10 @@ function addSpotifyInfoV2(podcast, row) {
             }
             catch (e) {
                 console.log(`Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`);
+                if (`${e}`.toLowerCase().includes("protocol error")) {
+                    console.log("Protocol error is most likely caused by a browser crash. Exiting app...");
+                    process.exit(1);
+                }
                 return false;
             }
         }
@@ -283,6 +291,10 @@ function addAppleInfo(podcast, row) {
         }
         catch (e) {
             console.log(`Failed to add Apple info to podcast "${podcast.title}". Error: ${e}`);
+            if (`${e}`.toLowerCase().includes("protocol error")) {
+                console.log("Protocol error is most likely caused by a browser crash. Exiting app...");
+                process.exit(1);
+            }
             return false;
         }
     });
@@ -345,6 +357,10 @@ function addYoutubeInfo(podcast, row) {
         }
         catch (e) {
             console.log(`Failed to add Youtube info to podcast "${podcast.title}". Error: ${e}`);
+            if (`${e}`.toLowerCase().includes("protocol error")) {
+                console.log("Protocol error is most likely caused by a browser crash. Exiting app...");
+                process.exit(1);
+            }
             return false;
         }
     });
