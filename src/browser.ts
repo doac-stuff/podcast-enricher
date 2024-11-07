@@ -9,7 +9,7 @@ export async function waitForBrowser(): Promise<puppeteer.Browser> {
     browserRequestPending = true;
     browserPromise = puppeteer
       .launch({
-        headless: false,
+        headless: true,
         executablePath: process.env.CHROME_EXEC_PATH,
         userDataDir: process.env.CHROME_DATA_PATH,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
