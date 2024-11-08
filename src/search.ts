@@ -37,7 +37,7 @@ export async function firstGoogleResultLink(query: string) {
     const resultSelector = "div.yuRUbf";
     await page.waitForSelector(resultSelector, {
       visible: true,
-      timeout: 5000,
+      timeout: 15000,
     });
   });
   const link = extractFirstGoogleResultLink(html);
@@ -51,7 +51,7 @@ export async function firstBingResultLink(query: string) {
     const resultSelector = "li.b_algo h2 a";
     await page.waitForSelector(resultSelector, {
       visible: true,
-      timeout: 5000,
+      timeout: 15000,
     });
   });
   const link = extractFirstBingResultLink(html);

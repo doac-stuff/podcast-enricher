@@ -74,7 +74,7 @@ function firstGoogleResultLink(query) {
             const resultSelector = "div.yuRUbf";
             yield page.waitForSelector(resultSelector, {
                 visible: true,
-                timeout: 5000,
+                timeout: 15000,
             });
         }));
         const link = extractFirstGoogleResultLink(html);
@@ -89,7 +89,7 @@ function firstBingResultLink(query) {
             const resultSelector = "li.b_algo h2 a";
             yield page.waitForSelector(resultSelector, {
                 visible: true,
-                timeout: 5000,
+                timeout: 15000,
             });
         }));
         const link = extractFirstBingResultLink(html);
