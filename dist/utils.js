@@ -50,7 +50,8 @@ exports.extractTotalVideos = extractTotalVideos;
 exports.extractAndRecentAverageViews = extractAndRecentAverageViews;
 exports.extractLastPublishedDate = extractLastPublishedDate;
 exports.extractSpotifyHref = extractSpotifyHref;
-exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
+exports.fetchHydratedHtmlContentProxy = fetchHydratedHtmlContentProxy;
+exports.fetchHydratedHtmlContentDirect = fetchHydratedHtmlContentDirect;
 exports.clickMoreButtonAndWaitForPopup = clickMoreButtonAndWaitForPopup;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
@@ -258,12 +259,40 @@ function extractSpotifyHref(html) {
     const anchor = $('a.podcastsubscribe[aria-label="spotify-podcast"]');
     return anchor.attr("href") || null;
 }
-function fetchHydratedHtmlContent(url, action) {
+function fetchHydratedHtmlContentProxy(url, action) {
     return __awaiter(this, void 0, void 0, function* () {
-        const browser = yield (0, browser_1.waitForBrowser)();
+        const browser = yield (0, browser_1.waitForProxyBrowser)();
         const page = yield browser.newPage();
         try {
-            yield page.goto(url, { timeout: 120000 });
+            yield page.authenticate({
+                username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
+                password: "r3l4ncz3asza",
+            });
+            yield page.goto(url, { timeout: 15000 });
+            if (action) {
+                console.log("Running page action...");
+                yield action(page);
+            }
+            const html = yield page.content();
+            yield page.close();
+            return html;
+        }
+        catch (e) {
+            yield page.close();
+            throw e;
+        }
+    });
+}
+function fetchHydratedHtmlContentDirect(url, action) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const browser = yield (0, browser_1.waitForDirectBrowser)();
+        const page = yield browser.newPage();
+        try {
+            yield page.authenticate({
+                username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
+                password: "r3l4ncz3asza",
+            });
+            yield page.goto(url, { timeout: 15000 });
             if (action) {
                 console.log("Running page action...");
                 yield action(page);

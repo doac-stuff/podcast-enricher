@@ -4,7 +4,7 @@ import * as cheerio from "cheerio";
 import fs from "fs/promises";
 import { PrismaClient } from "@prisma/client";
 import env from "dotenv";
-import { waitForBrowser } from "./browser";
+import { waitForDirectBrowser, waitForProxyBrowser } from "./browser";
 
 env.config();
 
@@ -285,14 +285,45 @@ export function extractSpotifyHref(html: string): string | null {
   return anchor.attr("href") || null;
 }
 
-export async function fetchHydratedHtmlContent(
+export async function fetchHydratedHtmlContentProxy(
   url: string,
   action: (page: puppeteer.Page) => Promise<void>
 ): Promise<string> {
-  const browser = await waitForBrowser();
+  const browser = await waitForProxyBrowser();
   const page = await browser.newPage();
   try {
-    await page.goto(url, { timeout: 120000 });
+    await page.authenticate({
+      username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
+      password: "r3l4ncz3asza",
+    });
+    await page.goto(url, { timeout: 15000 });
+
+    if (action) {
+      console.log("Running page action...");
+      await action(page);
+    }
+
+    const html = await page.content();
+    await page.close();
+    return html;
+  } catch (e) {
+    await page.close();
+    throw e;
+  }
+}
+
+export async function fetchHydratedHtmlContentDirect(
+  url: string,
+  action: (page: puppeteer.Page) => Promise<void>
+): Promise<string> {
+  const browser = await waitForDirectBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.authenticate({
+      username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
+      password: "r3l4ncz3asza",
+    });
+    await page.goto(url, { timeout: 15000 });
 
     if (action) {
       console.log("Running page action...");

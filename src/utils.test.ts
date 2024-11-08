@@ -1,4 +1,4 @@
-import { extractSpotifyReview, fetchHydratedHtmlContent } from "./utils";
+import { extractSpotifyReview, fetchHydratedHtmlContentDirect } from "./utils";
 import { describe } from "@jest/globals";
 
 describe("extractSpotifyRating", () => {
@@ -14,7 +14,7 @@ describe("extractSpotifyRating", () => {
   });
 
   test("extracts content from span within larger HTML", async () => {
-    const html = await fetchHydratedHtmlContent(
+    const html = await fetchHydratedHtmlContentDirect(
       "https://open.spotify.com/show/2BAjN7DBH8Kr90QRrUv8tM",
       async (page) => {
         const reviewSelector =

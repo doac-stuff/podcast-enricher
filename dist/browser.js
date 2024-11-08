@@ -12,34 +12,39 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.waitForBrowser = waitForBrowser;
+exports.waitForProxyBrowser = waitForProxyBrowser;
+exports.waitForDirectBrowser = waitForDirectBrowser;
 const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
 const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
 puppeteer_extra_1.default.use((0, puppeteer_extra_plugin_stealth_1.default)());
-let browser = null;
-let browserRequestPending = false;
-let browserPromise = null;
-function waitForBrowser() {
+// Proxy browser variables
+let proxyBrowser = null;
+let proxyBrowserRequestPending = false;
+let proxyBrowserPromise = null;
+// Direct browser variables
+let directBrowser = null;
+let directBrowserRequestPending = false;
+let directBrowserPromise = null;
+function waitForProxyBrowser() {
     return __awaiter(this, void 0, void 0, function* () {
-        if (!browser && !browserRequestPending) {
-            browserRequestPending = true;
-            browserPromise = puppeteer_extra_1.default
+        if (!proxyBrowser && !proxyBrowserRequestPending) {
+            proxyBrowserRequestPending = true;
+            proxyBrowserPromise = puppeteer_extra_1.default
                 .launch({
                 headless: true,
                 executablePath: process.env.CHROME_EXEC_PATH,
-                userDataDir: process.env.CHROME_DATA_PATH,
+                userDataDir: `${process.env.CHROME_DATA_PATH}_proxy`, // Separate user data directory for proxy
                 args: [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-infobars",
                     "--window-position=0,0",
-                    "--ignore-certificate-errors",
-                    "--ignore-certificate-errors-spki-list",
                     "--disable-extensions",
-                    "--disable-dev-shm-usage",
                     "--disable-accelerated-2d-canvas",
                     "--disable-gpu",
                     "--window-size=1920,1080",
+                    `--proxy-server=http://brd.superproxy.io:33335`,
+                    "--no-first-run",
                 ],
                 defaultViewport: {
                     width: 1920,
@@ -47,9 +52,8 @@ function waitForBrowser() {
                 },
             })
                 .then((launchedBrowser) => __awaiter(this, void 0, void 0, function* () {
-                // Use type assertion here
-                browser = launchedBrowser;
-                const page = yield browser.newPage();
+                proxyBrowser = launchedBrowser;
+                const page = yield proxyBrowser.newPage();
                 yield page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
                 yield page.evaluateOnNewDocument(() => {
                     Object.defineProperty(navigator, "webdriver", {
@@ -63,12 +67,62 @@ function waitForBrowser() {
                     });
                 });
                 yield page.close();
-                return browser;
+                return proxyBrowser;
             }));
         }
-        if (browserPromise) {
-            return browserPromise;
+        if (proxyBrowserPromise) {
+            return proxyBrowserPromise;
         }
-        throw new Error("Failed to initialize browser");
+        throw new Error("Failed to initialize proxy browser");
+    });
+}
+function waitForDirectBrowser() {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!directBrowser && !directBrowserRequestPending) {
+            directBrowserRequestPending = true;
+            directBrowserPromise = puppeteer_extra_1.default
+                .launch({
+                headless: true,
+                executablePath: process.env.CHROME_EXEC_PATH,
+                userDataDir: `${process.env.CHROME_DATA_PATH}`,
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-infobars",
+                    "--window-position=0,0",
+                    "--disable-extensions",
+                    "--disable-accelerated-2d-canvas",
+                    "--disable-gpu",
+                    "--window-size=1920,1080",
+                    "--no-first-run",
+                ],
+                defaultViewport: {
+                    width: 1920,
+                    height: 1080,
+                },
+            })
+                .then((launchedBrowser) => __awaiter(this, void 0, void 0, function* () {
+                directBrowser = launchedBrowser;
+                const page = yield directBrowser.newPage();
+                yield page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                yield page.evaluateOnNewDocument(() => {
+                    Object.defineProperty(navigator, "webdriver", {
+                        get: () => undefined,
+                    });
+                    Object.defineProperty(navigator, "languages", {
+                        get: () => ["en-US", "en"],
+                    });
+                    Object.defineProperty(navigator, "plugins", {
+                        get: () => [1, 2, 3, 4, 5],
+                    });
+                });
+                yield page.close();
+                return directBrowser;
+            }));
+        }
+        if (directBrowserPromise) {
+            return directBrowserPromise;
+        }
+        throw new Error("Failed to initialize direct browser");
     });
 }

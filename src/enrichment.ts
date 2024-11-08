@@ -10,7 +10,8 @@ import {
   extractTotalVideos,
   extractTotalViews,
   extractYoutubeChannelHref,
-  fetchHydratedHtmlContent,
+  fetchHydratedHtmlContentDirect,
+  fetchHydratedHtmlContentProxy,
   parseReviewCount,
   prisma,
 } from "./utils";
@@ -221,12 +222,15 @@ async function addSpotifyInfoV1(
           `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
         );
         row.spotify_url = show.external_urls.spotify;
-        const html = await fetchHydratedHtmlContent(
+        const html = await fetchHydratedHtmlContentDirect(
           row.spotify_url,
           async (page) => {
             const reviewSelector =
               ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
-            await page.waitForSelector(reviewSelector, { visible: true });
+            await page.waitForSelector(reviewSelector, {
+              visible: true,
+              timeout: 15000,
+            });
           }
         );
         console.log(
@@ -270,11 +274,17 @@ async function addSpotifyInfoV2(
       `Following link ${link} to find Spotify show "${podcast.title}". Adding corresponding Spotify info...`
     );
     row.spotify_url = link ?? "";
-    let html = await fetchHydratedHtmlContent(row.spotify_url, async (page) => {
-      const reviewSelector =
-        ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
-      await page.waitForSelector(reviewSelector, { visible: true });
-    });
+    let html = await fetchHydratedHtmlContentDirect(
+      row.spotify_url,
+      async (page) => {
+        const reviewSelector =
+          ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
+        await page.waitForSelector(reviewSelector, {
+          visible: true,
+          timeout: 15000,
+        });
+      }
+    );
     console.log(
       `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
     );
@@ -309,12 +319,15 @@ async function addSpotifyInfoV2(
             `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
           );
           row.spotify_url = show.external_urls.spotify;
-          const html = await fetchHydratedHtmlContent(
+          const html = await fetchHydratedHtmlContentDirect(
             row.spotify_url,
             async (page) => {
               const reviewSelector =
                 ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
-              await page.waitForSelector(reviewSelector, { visible: true });
+              await page.waitForSelector(reviewSelector, {
+                visible: true,
+                timeout: 15000,
+              });
             }
           );
           console.log(
@@ -356,12 +369,18 @@ async function addAppleInfo(
     if (!podcast.itunesId) return { result: false, epTitle: null };
     const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
     row.apple_podcast_url = url;
-    const html = await fetchHydratedHtmlContent(url, async (page) => {
+    const html = await fetchHydratedHtmlContentDirect(url, async (page) => {
       const reviewSelector = "li.svelte-11a0tog";
-      await page.waitForSelector(reviewSelector, { visible: true });
+      await page.waitForSelector(reviewSelector, {
+        visible: true,
+        timeout: 15000,
+      });
       try {
         const epTitleSelector = ".episode-details__title-text";
-        await page.waitForSelector(epTitleSelector, { visible: true });
+        await page.waitForSelector(epTitleSelector, {
+          visible: true,
+          timeout: 15000,
+        });
       } catch (e) {
         console.log(
           `Failed to get episode title for "${podcast.title}" from Apple podcast. Will try RSS...`
@@ -436,24 +455,30 @@ async function addYoutubeInfo(
         console.log(
           `Found name title match on Youtube "${result?.channelTitle}". Adding corresponding Youtube info...`
         );
-        let html = await fetchHydratedHtmlContent(
+        let html = await fetchHydratedHtmlContentDirect(
           `https://www.youtube.com/watch?v=${result?.id}`,
           async (page) => {
             const hrefSelector =
               "a.yt-simple-endpoint.style-scope.ytd-video-owner-renderer";
-            await page.waitForSelector(hrefSelector, { visible: true });
+            await page.waitForSelector(hrefSelector, {
+              visible: true,
+              timeout: 15000,
+            });
           }
         );
         row.youtube_channel_url = `https://www.youtube.com${extractYoutubeChannelHref(
           html
         )}`;
         //don't bother with the popup for now. we won't get total views but that is okay
-        html = await fetchHydratedHtmlContent(
+        html = await fetchHydratedHtmlContentDirect(
           row.youtube_channel_url,
           async (page) => {
             const detailsSelector =
               "span.yt-core-attributed-string.yt-content-metadata-view-model-wiz__metadata-text";
-            await page.waitForSelector(detailsSelector, { visible: true });
+            await page.waitForSelector(detailsSelector, {
+              visible: true,
+              timeout: 15000,
+            });
           }
           //clickMoreButtonAndWaitForPopup
         );
@@ -464,12 +489,15 @@ async function addYoutubeInfo(
         row.youtube_average_views =
           (totalViews ?? 0) / Math.max(videoCount ?? 0, 1);
 
-        html = await fetchHydratedHtmlContent(
+        html = await fetchHydratedHtmlContentDirect(
           `${row.youtube_channel_url}/videos`,
           async (page) => {
             const ravSelector =
               "span.inline-metadata-item.style-scope.ytd-video-meta-block";
-            await page.waitForSelector(ravSelector, { visible: true });
+            await page.waitForSelector(ravSelector, {
+              visible: true,
+              timeout: 15000,
+            });
           }
         );
         row.youtube_recent_average_views = extractAndRecentAverageViews(html);

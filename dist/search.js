@@ -34,38 +34,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateGoogleSearchUrl = generateGoogleSearchUrl;
 exports.generateBingSearchUrl = generateBingSearchUrl;
-exports.generateYahooSearchUrl = generateYahooSearchUrl;
-exports.generateBaiduSearchUrl = generateBaiduSearchUrl;
-exports.generateYandexSearchUrl = generateYandexSearchUrl;
-exports.generateDuckDuckGoSearchUrl = generateDuckDuckGoSearchUrl;
-exports.generateAskSearchUrl = generateAskSearchUrl;
-exports.generateNaverSearchUrl = generateNaverSearchUrl;
-exports.generateAOLSearchUrl = generateAOLSearchUrl;
-exports.generateEcosiaSearchUrl = generateEcosiaSearchUrl;
 exports.extractFirstGoogleResultLink = extractFirstGoogleResultLink;
 exports.extractFirstBingResultLink = extractFirstBingResultLink;
-exports.extractFirstYahooResultLink = extractFirstYahooResultLink;
-exports.extractFirstBaiduResultLink = extractFirstBaiduResultLink;
-exports.extractFirstYandexResultLink = extractFirstYandexResultLink;
-exports.extractFirstDuckDuckGoResultLink = extractFirstDuckDuckGoResultLink;
-exports.extractFirstAskResultLink = extractFirstAskResultLink;
-exports.extractFirstNaverResultLink = extractFirstNaverResultLink;
-exports.extractFirstAOLResultLink = extractFirstAOLResultLink;
-exports.extractFirstEcosiaResultLink = extractFirstEcosiaResultLink;
 exports.firstGoogleResultLink = firstGoogleResultLink;
 exports.firstBingResultLink = firstBingResultLink;
-exports.firstYahooResultLink = firstYahooResultLink;
-exports.firstBaiduResultLink = firstBaiduResultLink;
-exports.firstYandexResultLink = firstYandexResultLink;
-exports.firstDuckDuckGoResultLink = firstDuckDuckGoResultLink;
-exports.firstAskResultLink = firstAskResultLink;
-exports.firstNaverResultLink = firstNaverResultLink;
-exports.firstAOLResultLink = firstAOLResultLink;
-exports.firstEcosiaResultLink = firstEcosiaResultLink;
 exports.distributedSearch = distributedSearch;
 const cheerio = __importStar(require("cheerio"));
-const utils_1 = require("./utils");
 const lodash_1 = require("lodash");
+const utils_1 = require("./utils");
 // Google (already provided)
 function generateGoogleSearchUrl(query) {
     const baseUrl = "https://www.google.com/search";
@@ -78,55 +54,7 @@ function generateBingSearchUrl(query) {
     const encodedQuery = encodeURIComponent(query);
     return `${baseUrl}?q=${encodedQuery}`;
 }
-// Yahoo
-function generateYahooSearchUrl(query) {
-    const baseUrl = "https://search.yahoo.com/search";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?p=${encodedQuery}`;
-}
-// Baidu
-function generateBaiduSearchUrl(query) {
-    const baseUrl = "https://www.baidu.com/s";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?wd=${encodedQuery}`;
-}
-// Yandex
-function generateYandexSearchUrl(query) {
-    const baseUrl = "https://yandex.com/search/";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?text=${encodedQuery}&lr=87`;
-}
-// DuckDuckGo
-function generateDuckDuckGoSearchUrl(query) {
-    const baseUrl = "https://html.duckduckgo.com/html/";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?q=${encodedQuery}`;
-}
-// Ask.com
-function generateAskSearchUrl(query) {
-    const baseUrl = "https://www.ask.com/web";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?q=${encodedQuery}`;
-}
-// Naver
-function generateNaverSearchUrl(query) {
-    const baseUrl = "https://search.naver.com/search.naver";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?where=web&query=${encodedQuery}`;
-}
-// AOL
-function generateAOLSearchUrl(query) {
-    const baseUrl = "https://search.aol.com/aol/search";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?q=${encodedQuery}`;
-}
-// Ecosia
-function generateEcosiaSearchUrl(query) {
-    const baseUrl = "https://www.ecosia.org/search";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?q=${encodedQuery}`;
-}
-// Google (already provided)
+// Google
 function extractFirstGoogleResultLink(html) {
     const $ = cheerio.load(html);
     const firstResult = $("div.yuRUbf a").first().attr("href");
@@ -138,74 +66,16 @@ function extractFirstBingResultLink(html) {
     const firstResult = $("li.b_algo h2 a").first().attr("href");
     return firstResult || null;
 }
-// Yahoo
-function extractFirstYahooResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.algo-sr h3.title a").first().attr("href");
-    return firstResult || null;
-}
-// Baidu
-function extractFirstBaiduResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.result h3.t a").first().attr("href");
-    return firstResult || null;
-}
-// Yandex
-function extractFirstYandexResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("li.serp-item h2 a").first().attr("href") ||
-        $("div.organic__url-text").first().parent("a").attr("href") ||
-        $("div.organic__title a").first().attr("href");
-    return firstResult || null;
-}
-// DuckDuckGo
-function extractFirstDuckDuckGoResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.result__body h2.result__title a").first().attr("href") ||
-        $("div.links_main h2 a").first().attr("href") ||
-        $("div.result__title a").first().attr("href");
-    return firstResult || null;
-}
-// Ask.com
-function extractFirstAskResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.PartialSearchResults-item h2.PartialSearchResults-item-title a")
-        .first()
-        .attr("href") ||
-        $("div.result-link a").first().attr("href") ||
-        $("div.web-result a.result-link").first().attr("href");
-    return firstResult || null;
-}
-// Naver
-function extractFirstNaverResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("li.sp_website a.link_tit").first().attr("href") ||
-        $("div.total_wrap a.link_tit").first().attr("href");
-    return firstResult || null;
-}
-// AOL
-function extractFirstAOLResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.algo-sr h3.title a").first().attr("href") ||
-        $("div.dd.algo.algo-sr a.fz-l").first().attr("href") ||
-        $("div.compTitle h3.title a").first().attr("href");
-    return firstResult || null;
-}
-// Ecosia
-function extractFirstEcosiaResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.result-body h2 a").first().attr("href") ||
-        $("div.result a.result-title").first().attr("href") ||
-        $("div.mainline-results div.result a.js-result-title").first().attr("href");
-    return firstResult || null;
-}
 // Google
 function firstGoogleResultLink(query) {
     return __awaiter(this, void 0, void 0, function* () {
         const searchUrl = generateGoogleSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
+        let html = yield (0, utils_1.fetchHydratedHtmlContentProxy)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
             const resultSelector = "div.yuRUbf";
-            yield page.waitForSelector(resultSelector, { visible: true });
+            yield page.waitForSelector(resultSelector, {
+                visible: true,
+                timeout: 5000,
+            });
         }));
         const link = extractFirstGoogleResultLink(html);
         return link;
@@ -215,133 +85,20 @@ function firstGoogleResultLink(query) {
 function firstBingResultLink(query) {
     return __awaiter(this, void 0, void 0, function* () {
         const searchUrl = generateBingSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
+        let html = yield (0, utils_1.fetchHydratedHtmlContentProxy)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
             const resultSelector = "li.b_algo h2 a";
-            yield page.waitForSelector(resultSelector, { visible: true });
+            yield page.waitForSelector(resultSelector, {
+                visible: true,
+                timeout: 5000,
+            });
         }));
         const link = extractFirstBingResultLink(html);
-        return link;
-    });
-}
-// Yahoo
-function firstYahooResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateYahooSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "div.algo-sr h3.title a";
-            yield page.waitForSelector(resultSelector, { visible: true });
-        }));
-        const link = extractFirstYahooResultLink(html);
-        return link;
-    });
-}
-// Baidu
-function firstBaiduResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateBaiduSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "div.result h3.t a";
-            yield page.waitForSelector(resultSelector, { visible: true });
-        }));
-        const link = extractFirstBaiduResultLink(html);
-        return link;
-    });
-}
-// Yandex
-function firstYandexResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateYandexSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "li.serp-item h2 a, div.organic__url-text, div.organic__title a";
-            yield page.waitForSelector(resultSelector, {
-                visible: true,
-            });
-        }));
-        const link = extractFirstYandexResultLink(html);
-        return link;
-    });
-}
-// DuckDuckGo
-function firstDuckDuckGoResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateDuckDuckGoSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "div.result__body h2.result__title a, div.links_main h2 a, div.result__title a";
-            yield page.waitForSelector(resultSelector, {
-                visible: true,
-            });
-        }));
-        const link = extractFirstDuckDuckGoResultLink(html);
-        return link;
-    });
-}
-// Ask.com
-function firstAskResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateAskSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "div.PartialSearchResults-item h2.PartialSearchResults-item-title a, div.result-link a, div.web-result a.result-link";
-            yield page.waitForSelector(resultSelector, {
-                visible: true,
-            });
-        }));
-        const link = extractFirstAskResultLink(html);
-        return link;
-    });
-}
-// Naver
-function firstNaverResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateNaverSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "li.sp_website a.link_tit, div.total_wrap a.link_tit";
-            yield page.waitForSelector(resultSelector, {
-                visible: true,
-            });
-        }));
-        const link = extractFirstNaverResultLink(html);
-        return link;
-    });
-}
-// AOL
-function firstAOLResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateAOLSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "div.algo-sr h3.title a, div.dd.algo.algo-sr a.fz-l, div.compTitle h3.title a";
-            yield page.waitForSelector(resultSelector, {
-                visible: true,
-            });
-        }));
-        const link = extractFirstAOLResultLink(html);
-        return link;
-    });
-}
-// Ecosia
-function firstEcosiaResultLink(query) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const searchUrl = generateEcosiaSearchUrl(query);
-        let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-            const resultSelector = "div.result-body h2 a, div.result a.result-title, div.mainline-results div.result a.js-result-title";
-            yield page.waitForSelector(resultSelector, {
-                visible: true,
-            });
-        }));
-        const link = extractFirstEcosiaResultLink(html);
         return link;
     });
 }
 const searchFunctions = [
     firstGoogleResultLink,
     firstBingResultLink,
-    firstYahooResultLink,
-    //firstBaiduResultLink,
-    //firstYandexResultLink,
-    // firstDuckDuckGoResultLink,
-    //firstAskResultLink,
-    //firstNaverResultLink,
-    //firstAOLResultLink,
-    //firstEcosiaResultLink,
 ];
 function distributedSearch(query) {
     return __awaiter(this, void 0, void 0, function* () {
