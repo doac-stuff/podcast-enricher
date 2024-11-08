@@ -17,6 +17,7 @@ const api_spotify_1 = require("./api.spotify");
 const api_youtube_1 = require("./api.youtube");
 const model_1 = require("./model");
 const api_podcastindex_1 = require("./api.podcastindex");
+const search_1 = require("./search");
 function enrichPayload(podcasts) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log(`Enriching payload with ${podcasts.length} podcasts...`);
@@ -30,9 +31,9 @@ function enrichPayload(podcasts) {
                     console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
                     yield addBasicInfo(podcasts[i], newReportRow);
                     //at least one enrichment must be successful to push the result
-                    let gotSpotify = yield addSpotifyInfoV1(podcasts[i], newReportRow);
-                    let gotApple = yield addAppleInfo(podcasts[i], newReportRow);
-                    let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow);
+                    let gotSpotify = yield addSpotifyInfoV2(podcasts[i], newReportRow);
+                    let { result: gotApple, epTitle } = yield addAppleInfo(podcasts[i], newReportRow);
+                    let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow, epTitle);
                     if (gotSpotify || gotApple || gotYoutube) {
                         payload.items.push(newReportRow);
                     }
@@ -208,16 +209,10 @@ function addSpotifyInfoV2(podcast, row) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f, _g, _h;
         try {
-            //first try a google search
-            const searchUrl = (0, utils_1.generateGoogleSearchUrl)(`"${podcast.title}" "all episodes" "follow" "about" spotify podcast`);
-            let html = yield (0, utils_1.fetchHydratedHtmlContent)(searchUrl, (page) => __awaiter(this, void 0, void 0, function* () {
-                const resultSelector = "div.yuRUbf";
-                yield page.waitForSelector(resultSelector, { visible: true });
-            }));
-            const link = (0, utils_1.extractFirstResultLink)(html);
+            const link = yield (0, search_1.distributedSearch)(`"${podcast.title}" "all episodes" "follow" "about" spotify podcast`);
             console.log(`Following link ${link} to find Spotify show "${podcast.title}". Adding corresponding Spotify info...`);
             row.spotify_url = link !== null && link !== void 0 ? link : "";
-            html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url, (page) => __awaiter(this, void 0, void 0, function* () {
+            let html = yield (0, utils_1.fetchHydratedHtmlContent)(row.spotify_url, (page) => __awaiter(this, void 0, void 0, function* () {
                 const reviewSelector = ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
                 yield page.waitForSelector(reviewSelector, { visible: true });
             }));
@@ -230,7 +225,7 @@ function addSpotifyInfoV2(podcast, row) {
         }
         catch (e) {
             try {
-                console.log(`Google search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`);
+                console.log(`Distributed search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`);
                 //the try a spotify search
                 let searchResults = yield (0, api_spotify_1.searchSpotify)(`${podcast.title} ${podcast.itunesAuthor}`);
                 if (searchResults.shows.items.length < 1 && podcast.title) {
@@ -273,21 +268,31 @@ function addSpotifyInfoV2(podcast, row) {
 function addAppleInfo(podcast, row) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c;
+        let result = false;
         try {
             if (!podcast.itunesId)
-                return false;
+                return { result: false, epTitle: null };
             const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
             row.apple_podcast_url = url;
             const html = yield (0, utils_1.fetchHydratedHtmlContent)(url, (page) => __awaiter(this, void 0, void 0, function* () {
                 const reviewSelector = "li.svelte-11a0tog";
                 yield page.waitForSelector(reviewSelector, { visible: true });
+                try {
+                    const epTitleSelector = ".episode-details__title-text";
+                    yield page.waitForSelector(epTitleSelector, { visible: true });
+                }
+                catch (e) {
+                    console.log(`Failed to get episode title for "${podcast.title}" from Apple podcast. Will try RSS...`);
+                }
             }));
             console.log(`Fetched Apple podcast html for ${podcast.title}. It has ${html.length} characters.`);
             const rating = (_a = (0, utils_1.extractAppleReview)(html)) !== null && _a !== void 0 ? _a : ["No Rating"];
+            const epTitle = (0, utils_1.extractAppleLastEpisode)(html);
             console.log(`Extracted Apple podcast rating ${rating} for ${podcast.title}.`);
+            console.log(`Extracted last episode title "${epTitle}" for podcast "${podcast.title}".`);
             row.apple_review_count = (0, utils_1.parseReviewCount)((0, utils_1.extractFromParentheses)((_b = rating[0]) !== null && _b !== void 0 ? _b : ""));
             row.apple_review_score = parseInt(((_c = rating[0]) !== null && _c !== void 0 ? _c : "0").split("(")[0]);
-            return true;
+            return { result, epTitle: epTitle };
         }
         catch (e) {
             console.log(`Failed to add Apple info to podcast "${podcast.title}". Error: ${e}`);
@@ -295,15 +300,15 @@ function addAppleInfo(podcast, row) {
                 console.log("Protocol error is most likely caused by a browser crash. Exiting app...");
                 process.exit(1);
             }
-            return false;
+            return { result, epTitle: null };
         }
     });
 }
-function addYoutubeInfo(podcast, row) {
+function addYoutubeInfo(podcast, row, epTitle) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         try {
-            const lastEpisodeTitle = yield (0, api_podcastindex_1.getLastEpisodeTitle)(podcast.url);
+            const lastEpisodeTitle = epTitle !== null && epTitle !== void 0 ? epTitle : (yield (0, api_podcastindex_1.getLastEpisodeTitle)(podcast.url));
             if (!lastEpisodeTitle) {
                 throw new Error(`Failed to find an episode on podcast "${podcast.title}"`);
             }

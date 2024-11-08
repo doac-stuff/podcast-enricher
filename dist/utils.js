@@ -40,6 +40,7 @@ exports.sleep = exports.prisma = exports.backendUrl = void 0;
 exports.sha1 = sha1;
 exports.extractSpotifyReview = extractSpotifyReview;
 exports.extractAppleReview = extractAppleReview;
+exports.extractAppleLastEpisode = extractAppleLastEpisode;
 exports.extractFromParentheses = extractFromParentheses;
 exports.parseReviewCount = parseReviewCount;
 exports.extractYoutubeChannelHref = extractYoutubeChannelHref;
@@ -51,8 +52,6 @@ exports.extractLastPublishedDate = extractLastPublishedDate;
 exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContent = fetchHydratedHtmlContent;
 exports.clickMoreButtonAndWaitForPopup = clickMoreButtonAndWaitForPopup;
-exports.generateGoogleSearchUrl = generateGoogleSearchUrl;
-exports.extractFirstResultLink = extractFirstResultLink;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
 const client_1 = require("@prisma/client");
@@ -77,6 +76,11 @@ function extractAppleReview(html) {
     const $ = cheerio.load(html);
     const reviewInfo = $("li.svelte-11a0tog").first().text().trim();
     return [reviewInfo.length ? reviewInfo : null];
+}
+function extractAppleLastEpisode(html) {
+    const $ = cheerio.load(html);
+    const title = $(".episode-details__title-text").first().text();
+    return title.length ? title : null;
 }
 function extractFromParentheses(str) {
     const match = str.match(/\((.*?)\)/);
@@ -282,16 +286,6 @@ function clickMoreButtonAndWaitForPopup(page) {
         const popupIndicatorSelector = 'span.yt-core-attributed-string span[style=""]';
         yield page.waitForSelector(popupIndicatorSelector, { visible: true });
     });
-}
-function generateGoogleSearchUrl(query) {
-    const baseUrl = "https://www.google.com/search";
-    const encodedQuery = encodeURIComponent(query);
-    return `${baseUrl}?q=${encodedQuery}`;
-}
-function extractFirstResultLink(html) {
-    const $ = cheerio.load(html);
-    const firstResult = $("div.yuRUbf a").first().attr("href");
-    return firstResult || null;
 }
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 exports.sleep = sleep;

@@ -1,8 +1,8 @@
 import {
   backendUrl,
   extractAndRecentAverageViews,
+  extractAppleLastEpisode as extractAppleLastEpisodeTitle,
   extractAppleReview,
-  extractFirstResultLink,
   extractFromParentheses,
   extractLastPublishedDate,
   extractSpotifyReview,
@@ -11,7 +11,6 @@ import {
   extractTotalViews,
   extractYoutubeChannelHref,
   fetchHydratedHtmlContent,
-  generateGoogleSearchUrl,
   parseReviewCount,
   prisma,
 } from "./utils";
@@ -24,6 +23,7 @@ import {
   PodcastsEnrichedPayload,
 } from "./model";
 import { getLastEpisodeTitle } from "./api.podcastindex";
+import { distributedSearch } from "./search";
 
 export async function enrichPayload(
   podcasts: Podcast[]
@@ -40,9 +40,16 @@ export async function enrichPayload(
         );
         await addBasicInfo(podcasts[i], newReportRow);
         //at least one enrichment must be successful to push the result
-        let gotSpotify = await addSpotifyInfoV1(podcasts[i], newReportRow);
-        let gotApple = await addAppleInfo(podcasts[i], newReportRow);
-        let gotYoutube = await addYoutubeInfo(podcasts[i], newReportRow);
+        let gotSpotify = await addSpotifyInfoV2(podcasts[i], newReportRow);
+        let { result: gotApple, epTitle } = await addAppleInfo(
+          podcasts[i],
+          newReportRow
+        );
+        let gotYoutube = await addYoutubeInfo(
+          podcasts[i],
+          newReportRow,
+          epTitle
+        );
         if (gotSpotify || gotApple || gotYoutube) {
           payload.items.push(newReportRow);
         } else {
@@ -256,20 +263,14 @@ async function addSpotifyInfoV2(
   row: PodcastEnriched
 ): Promise<boolean> {
   try {
-    //first try a google search
-    const searchUrl = generateGoogleSearchUrl(
+    const link = await distributedSearch(
       `"${podcast.title}" "all episodes" "follow" "about" spotify podcast`
     );
-    let html = await fetchHydratedHtmlContent(searchUrl, async (page) => {
-      const resultSelector = "div.yuRUbf";
-      await page.waitForSelector(resultSelector, { visible: true });
-    });
-    const link = extractFirstResultLink(html);
     console.log(
       `Following link ${link} to find Spotify show "${podcast.title}". Adding corresponding Spotify info...`
     );
     row.spotify_url = link ?? "";
-    html = await fetchHydratedHtmlContent(row.spotify_url, async (page) => {
+    let html = await fetchHydratedHtmlContent(row.spotify_url, async (page) => {
       const reviewSelector =
         ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
       await page.waitForSelector(reviewSelector, { visible: true });
@@ -287,7 +288,7 @@ async function addSpotifyInfoV2(
   } catch (e: any) {
     try {
       console.log(
-        `Google search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`
+        `Distributed search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`
       );
       //the try a spotify search
       let searchResults = await searchSpotify(
@@ -349,27 +350,40 @@ async function addSpotifyInfoV2(
 async function addAppleInfo(
   podcast: Podcast,
   row: PodcastEnriched
-): Promise<boolean> {
+): Promise<{ result: boolean; epTitle: string | null }> {
+  let result = false;
   try {
-    if (!podcast.itunesId) return false;
+    if (!podcast.itunesId) return { result: false, epTitle: null };
     const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
     row.apple_podcast_url = url;
     const html = await fetchHydratedHtmlContent(url, async (page) => {
       const reviewSelector = "li.svelte-11a0tog";
       await page.waitForSelector(reviewSelector, { visible: true });
+      try {
+        const epTitleSelector = ".episode-details__title-text";
+        await page.waitForSelector(epTitleSelector, { visible: true });
+      } catch (e) {
+        console.log(
+          `Failed to get episode title for "${podcast.title}" from Apple podcast. Will try RSS...`
+        );
+      }
     });
     console.log(
       `Fetched Apple podcast html for ${podcast.title}. It has ${html.length} characters.`
     );
     const rating = extractAppleReview(html) ?? ["No Rating"];
+    const epTitle = extractAppleLastEpisodeTitle(html);
     console.log(
       `Extracted Apple podcast rating ${rating} for ${podcast.title}.`
+    );
+    console.log(
+      `Extracted last episode title "${epTitle}" for podcast "${podcast.title}".`
     );
     row.apple_review_count = parseReviewCount(
       extractFromParentheses(rating[0] ?? "")
     );
     row.apple_review_score = parseInt((rating[0] ?? "0").split("(")[0]);
-    return true;
+    return { result, epTitle: epTitle };
   } catch (e) {
     console.log(
       `Failed to add Apple info to podcast "${podcast.title}". Error: ${e}`
@@ -380,16 +394,18 @@ async function addAppleInfo(
       );
       process.exit(1);
     }
-    return false;
+    return { result, epTitle: null };
   }
 }
 
 async function addYoutubeInfo(
   podcast: Podcast,
-  row: PodcastEnriched
+  row: PodcastEnriched,
+  epTitle: string | null
 ): Promise<boolean> {
   try {
-    const lastEpisodeTitle = await getLastEpisodeTitle(podcast.url);
+    const lastEpisodeTitle =
+      epTitle ?? (await getLastEpisodeTitle(podcast.url));
     if (!lastEpisodeTitle) {
       throw new Error(
         `Failed to find an episode on podcast "${podcast.title}"`

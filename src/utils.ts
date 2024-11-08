@@ -39,6 +39,14 @@ export function extractAppleReview(html: string): (string | null)[] {
   return [reviewInfo.length ? reviewInfo : null];
 }
 
+export function extractAppleLastEpisode(html: string): string | null {
+  const $ = cheerio.load(html);
+
+  const title = $(".episode-details__title-text").first().text();
+
+  return title.length ? title : null;
+}
+
 export function extractFromParentheses(str: string): string | null {
   const match = str.match(/\((.*?)\)/);
   return match ? match[1] : null;
@@ -310,18 +318,6 @@ export async function clickMoreButtonAndWaitForPopup(page: puppeteer.Page) {
   const popupIndicatorSelector =
     'span.yt-core-attributed-string span[style=""]';
   await page.waitForSelector(popupIndicatorSelector, { visible: true });
-}
-
-export function generateGoogleSearchUrl(query: string): string {
-  const baseUrl = "https://www.google.com/search";
-  const encodedQuery = encodeURIComponent(query);
-  return `${baseUrl}?q=${encodedQuery}`;
-}
-
-export function extractFirstResultLink(html: string): string | null {
-  const $ = cheerio.load(html);
-  const firstResult = $("div.yuRUbf a").first().attr("href");
-  return firstResult || null;
 }
 
 export const sleep = (ms: number) =>
