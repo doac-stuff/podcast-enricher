@@ -46,21 +46,38 @@ const tar = __importStar(require("tar"));
 const zlib_1 = __importDefault(require("zlib"));
 const sqlite3_1 = __importDefault(require("sqlite3"));
 const rss_parser_1 = __importDefault(require("rss-parser"));
+const node_fetch_1 = __importDefault(require("node-fetch"));
 function getLastEpisodeTitle(feedUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         const parser = new rss_parser_1.default();
         try {
-            const feed = yield parser.parseURL(feedUrl);
+            // Fetch the XML content with relaxed security and headers
+            const response = yield (0, node_fetch_1.default)(feedUrl, {
+                method: "GET",
+                headers: {
+                    Accept: "*/*",
+                    "User-Agent": "Mozilla/5.0 (compatible; RSS-Reader/1.0)",
+                },
+                // Ignore SSL certificate issues
+                agent: new (require("https").Agent)({
+                    rejectUnauthorized: false,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            // Get the raw XML text
+            const xmlText = yield response.text();
+            // Parse the XML content
+            const feed = yield parser.parseString(xmlText);
             if (feed.items && feed.items.length > 0) {
                 const lastEpisode = feed.items[0];
                 return lastEpisode.title || null;
             }
-            else {
-                return null;
-            }
+            return null;
         }
         catch (error) {
-            console.error("Error fetching or parsing the RSS feed:", error);
+            console.error(`Error fetching or parsing the RSS feed at ${feedUrl}:`, error);
             return null;
         }
     });

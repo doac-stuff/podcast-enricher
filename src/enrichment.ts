@@ -423,8 +423,13 @@ async function addYoutubeInfo(
   epTitle: string | null
 ): Promise<boolean> {
   try {
-    const lastEpisodeTitle =
-      epTitle ?? (await getLastEpisodeTitle(podcast.url));
+    let lastEpisodeTitle = epTitle;
+    if (!lastEpisodeTitle) {
+      console.log(
+        `Did not get last episode title from podcast ${podcast.title}. Trying RSS feed at ${podcast.link}...`
+      );
+      lastEpisodeTitle = await getLastEpisodeTitle(podcast.url);
+    }
     if (!lastEpisodeTitle) {
       throw new Error(
         `Failed to find an episode on podcast "${podcast.title}"`

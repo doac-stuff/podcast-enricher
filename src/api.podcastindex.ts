@@ -5,6 +5,7 @@ import * as tar from "tar";
 import zlib from "zlib";
 import sqlite3 from "sqlite3";
 import Parser from "rss-parser";
+import fetch from "node-fetch";
 
 export async function getLastEpisodeTitle(
   feedUrl: string
@@ -12,16 +13,40 @@ export async function getLastEpisodeTitle(
   const parser = new Parser();
 
   try {
-    const feed = await parser.parseURL(feedUrl);
+    // Fetch the XML content with relaxed security and headers
+    const response = await fetch(feedUrl, {
+      method: "GET",
+      headers: {
+        Accept: "*/*",
+        "User-Agent": "Mozilla/5.0 (compatible; RSS-Reader/1.0)",
+      },
+      // Ignore SSL certificate issues
+      agent: new (require("https").Agent)({
+        rejectUnauthorized: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Get the raw XML text
+    const xmlText = await response.text();
+
+    // Parse the XML content
+    const feed = await parser.parseString(xmlText);
 
     if (feed.items && feed.items.length > 0) {
       const lastEpisode = feed.items[0];
       return lastEpisode.title || null;
-    } else {
-      return null;
     }
+
+    return null;
   } catch (error) {
-    console.error("Error fetching or parsing the RSS feed:", error);
+    console.error(
+      `Error fetching or parsing the RSS feed at ${feedUrl}:`,
+      error
+    );
     return null;
   }
 }

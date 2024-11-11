@@ -323,7 +323,11 @@ function addYoutubeInfo(podcast, row, epTitle) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         try {
-            const lastEpisodeTitle = epTitle !== null && epTitle !== void 0 ? epTitle : (yield (0, api_podcastindex_1.getLastEpisodeTitle)(podcast.url));
+            let lastEpisodeTitle = epTitle;
+            if (!lastEpisodeTitle) {
+                console.log(`Did not get last episode title from podcast ${podcast.title}. Trying RSS feed at ${podcast.link}...`);
+                lastEpisodeTitle = yield (0, api_podcastindex_1.getLastEpisodeTitle)(podcast.url);
+            }
             if (!lastEpisodeTitle) {
                 throw new Error(`Failed to find an episode on podcast "${podcast.title}"`);
             }
