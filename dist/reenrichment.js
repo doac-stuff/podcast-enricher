@@ -45,6 +45,7 @@ function startReEnricher() {
                     }
                     console.log(`Re-enriching ${podcastsToReEnrich.length} podcasts out of ${stalePodcasts.count} stale podcasts left.`);
                     const payloadSize = 4;
+                    const postPromises = [];
                     for (let i = 0; i < Math.ceil(podcastsToReEnrich.length / payloadSize); i++) {
                         const payload = [];
                         for (let j = 0; j < payloadSize; j++) {
@@ -52,8 +53,19 @@ function startReEnricher() {
                             payload.push(podcastsToReEnrich[index]);
                         }
                         const enrichedPayload = yield (0, enrichment_1.enrichPayload)(payload);
-                        (0, enrichment_1.postEnrichedPodcasts)(enrichedPayload); //not awaiting this to optimize for speed
+                        function tryPost() {
+                            return __awaiter(this, void 0, void 0, function* () {
+                                try {
+                                    yield (0, enrichment_1.postEnrichedPodcasts)(enrichedPayload);
+                                }
+                                catch (e) {
+                                    console.log(`Failed to post re-enriched: ${JSON.stringify(enrichedPayload)}. They will be retried. Error: ${e}`);
+                                }
+                            });
+                        }
+                        postPromises.push(tryPost()); //delaying awaiting this to optimize for speed
                     }
+                    yield Promise.all(postPromises);
                 }
             }
             catch (e) {

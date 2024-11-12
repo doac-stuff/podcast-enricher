@@ -43,7 +43,7 @@ function waitForProxyBrowser() {
                     "--disable-accelerated-2d-canvas",
                     "--disable-gpu",
                     "--window-size=1920,1080",
-                    `--proxy-server=http://brd.superproxy.io:33335`,
+                    `--proxy-server=http://geo.iproyal.com:12321`,
                     "--no-first-run",
                 ],
                 defaultViewport: {

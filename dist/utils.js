@@ -265,8 +265,8 @@ function fetchHydratedHtmlContentProxy(url, action) {
         const page = yield browser.newPage();
         try {
             yield page.authenticate({
-                username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
-                password: "r3l4ncz3asza",
+                username: "AoJ2oCvPOUY7ATbU",
+                password: "TTXqhcEfjfLTKfWj",
             });
             yield page.goto(url, { timeout: 15000 });
             if (action) {
@@ -288,10 +288,6 @@ function fetchHydratedHtmlContentDirect(url, action) {
         const browser = yield (0, browser_1.waitForDirectBrowser)();
         const page = yield browser.newPage();
         try {
-            yield page.authenticate({
-                username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
-                password: "r3l4ncz3asza",
-            });
             yield page.goto(url, { timeout: 15000 });
             if (action) {
                 console.log("Running page action...");

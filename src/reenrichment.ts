@@ -42,6 +42,7 @@ export function startReEnricher() {
         );
 
         const payloadSize = 4;
+        const postPromises: Promise<any>[] = [];
         for (
           let i = 0;
           i < Math.ceil(podcastsToReEnrich.length / payloadSize);
@@ -53,8 +54,21 @@ export function startReEnricher() {
             payload.push(podcastsToReEnrich[index]);
           }
           const enrichedPayload = await enrichPayload(payload);
-          postEnrichedPodcasts(enrichedPayload); //not awaiting this to optimize for speed
+          async function tryPost() {
+            try {
+              await postEnrichedPodcasts(enrichedPayload);
+            } catch (e) {
+              console.log(
+                `Failed to post re-enriched: ${JSON.stringify(
+                  enrichedPayload
+                )}. They will be retried. Error: ${e}`
+              );
+            }
+          }
+          postPromises.push(tryPost()); //delaying awaiting this to optimize for speed
         }
+
+        await Promise.all(postPromises);
       }
     } catch (e) {
       console.log(`Re-enrichment exited with error: ${e}`);

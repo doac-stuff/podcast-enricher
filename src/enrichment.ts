@@ -426,7 +426,7 @@ async function addYoutubeInfo(
     let lastEpisodeTitle = epTitle;
     if (!lastEpisodeTitle) {
       console.log(
-        `Did not get last episode title from podcast ${podcast.title}. Trying RSS feed at ${podcast.link}...`
+        `Did not get last episode title from podcast ${podcast.title}. Trying RSS feed at ${podcast.url}...`
       );
       lastEpisodeTitle = await getLastEpisodeTitle(podcast.url);
     }

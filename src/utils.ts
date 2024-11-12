@@ -293,8 +293,8 @@ export async function fetchHydratedHtmlContentProxy(
   const page = await browser.newPage();
   try {
     await page.authenticate({
-      username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
-      password: "r3l4ncz3asza",
+      username: "AoJ2oCvPOUY7ATbU",
+      password: "TTXqhcEfjfLTKfWj",
     });
     await page.goto(url, { timeout: 15000 });
 
@@ -319,10 +319,6 @@ export async function fetchHydratedHtmlContentDirect(
   const browser = await waitForDirectBrowser();
   const page = await browser.newPage();
   try {
-    await page.authenticate({
-      username: "brd-customer-hl_51d7cda1-zone-residential_proxy1",
-      password: "r3l4ncz3asza",
-    });
     await page.goto(url, { timeout: 15000 });
 
     if (action) {
