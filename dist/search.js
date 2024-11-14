@@ -98,7 +98,7 @@ function firstBingResultLink(query) {
 }
 const searchFunctions = [
     firstGoogleResultLink,
-    firstBingResultLink,
+    // firstBingResultLink,
 ];
 function distributedSearch(query) {
     return __awaiter(this, void 0, void 0, function* () {

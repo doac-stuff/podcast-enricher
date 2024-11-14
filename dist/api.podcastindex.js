@@ -62,6 +62,7 @@ function getLastEpisodeTitle(feedUrl) {
                 agent: new (require("https").Agent)({
                     rejectUnauthorized: false,
                 }),
+                signal: AbortSignal.timeout(15000),
             });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

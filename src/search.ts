@@ -62,7 +62,7 @@ type SearchFunction = (query: string) => Promise<string | null>;
 
 const searchFunctions: SearchFunction[] = [
   firstGoogleResultLink,
-  firstBingResultLink,
+  // firstBingResultLink,
 ];
 
 export async function distributedSearch(query: string): Promise<string | null> {

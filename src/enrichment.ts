@@ -40,11 +40,22 @@ export async function enrichPayload(
         );
         await addBasicInfo(podcasts[i], newReportRow);
         //at least one enrichment must be successful to push the result
-        let gotSpotify = await addSpotifyInfoV2(podcasts[i], newReportRow);
         let { result: gotApple, epTitle } = await addAppleInfo(
           podcasts[i],
           newReportRow
         );
+        if (!epTitle) {
+          console.log(
+            `Did not get last episode title from podcast ${podcasts[i].title}. Trying RSS feed at ${podcasts[i].url}...`
+          );
+          epTitle = await getLastEpisodeTitle(podcasts[i].url);
+        }
+        if (!epTitle || epTitle === "") {
+          throw new Error(
+            `Failed to find an episode on podcast "${podcasts[i].title}. Will skip."`
+          );
+        }
+        let gotSpotify = await addSpotifyInfoV2(podcasts[i], newReportRow);
         let gotYoutube = await addYoutubeInfo(
           podcasts[i],
           newReportRow,
@@ -420,21 +431,10 @@ async function addAppleInfo(
 async function addYoutubeInfo(
   podcast: Podcast,
   row: PodcastEnriched,
-  epTitle: string | null
+  epTitle: string
 ): Promise<boolean> {
   try {
     let lastEpisodeTitle = epTitle;
-    if (!lastEpisodeTitle) {
-      console.log(
-        `Did not get last episode title from podcast ${podcast.title}. Trying RSS feed at ${podcast.url}...`
-      );
-      lastEpisodeTitle = await getLastEpisodeTitle(podcast.url);
-    }
-    if (!lastEpisodeTitle) {
-      throw new Error(
-        `Failed to find an episode on podcast "${podcast.title}"`
-      );
-    }
     let searchResults = await searchYouTube(
       `${lastEpisodeTitle} ${podcast.title}`
     );

@@ -24,6 +24,7 @@ export async function getLastEpisodeTitle(
       agent: new (require("https").Agent)({
         rejectUnauthorized: false,
       }),
+      signal: AbortSignal.timeout(15000) as any,
     });
 
     if (!response.ok) {

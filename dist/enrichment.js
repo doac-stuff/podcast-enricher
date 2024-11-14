@@ -31,8 +31,15 @@ function enrichPayload(podcasts) {
                     console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
                     yield addBasicInfo(podcasts[i], newReportRow);
                     //at least one enrichment must be successful to push the result
-                    let gotSpotify = yield addSpotifyInfoV2(podcasts[i], newReportRow);
                     let { result: gotApple, epTitle } = yield addAppleInfo(podcasts[i], newReportRow);
+                    if (!epTitle) {
+                        console.log(`Did not get last episode title from podcast ${podcasts[i].title}. Trying RSS feed at ${podcasts[i].url}...`);
+                        epTitle = yield (0, api_podcastindex_1.getLastEpisodeTitle)(podcasts[i].url);
+                    }
+                    if (!epTitle || epTitle === "") {
+                        throw new Error(`Failed to find an episode on podcast "${podcasts[i].title}. Will skip."`);
+                    }
+                    let gotSpotify = yield addSpotifyInfoV2(podcasts[i], newReportRow);
                     let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow, epTitle);
                     if (gotSpotify || gotApple || gotYoutube) {
                         payload.items.push(newReportRow);
@@ -326,13 +333,6 @@ function addYoutubeInfo(podcast, row, epTitle) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         try {
             let lastEpisodeTitle = epTitle;
-            if (!lastEpisodeTitle) {
-                console.log(`Did not get last episode title from podcast ${podcast.title}. Trying RSS feed at ${podcast.url}...`);
-                lastEpisodeTitle = yield (0, api_podcastindex_1.getLastEpisodeTitle)(podcast.url);
-            }
-            if (!lastEpisodeTitle) {
-                throw new Error(`Failed to find an episode on podcast "${podcast.title}"`);
-            }
             let searchResults = yield (0, api_youtube_1.searchYouTube)(`${lastEpisodeTitle} ${podcast.title}`);
             if (!searchResults || !searchResults.items) {
                 throw new Error(`Youtube search for episode "${lastEpisodeTitle}" on podcast "${podcast.title}"  failed`);
