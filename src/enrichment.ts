@@ -11,7 +11,6 @@ import {
   extractTotalViews,
   extractYoutubeChannelHref,
   fetchHydratedHtmlContentDirect,
-  fetchHydratedHtmlContentProxy,
   parseReviewCount,
   prisma,
 } from "./utils";
@@ -149,6 +148,7 @@ export async function enrichAll() {
         const payload: typeof unseenPodcasts = [];
         for (let j = 0; j < payloadSize; j++) {
           const index = i * payloadSize + j;
+          if (index >= unseenPodcasts.length) break;
           payload.push(unseenPodcasts[index]);
         }
         const enrichedPayload = await enrichPayload(payload);

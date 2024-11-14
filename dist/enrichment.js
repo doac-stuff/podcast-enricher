@@ -118,6 +118,8 @@ function enrichAll() {
                     const payload = [];
                     for (let j = 0; j < payloadSize; j++) {
                         const index = i * payloadSize + j;
+                        if (index >= unseenPodcasts.length)
+                            break;
                         payload.push(unseenPodcasts[index]);
                     }
                     const enrichedPayload = yield enrichPayload(payload);

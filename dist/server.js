@@ -15,57 +15,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.startServer = startServer;
 const express_1 = __importDefault(require("express"));
 const body_parser_1 = __importDefault(require("body-parser"));
+const reenrichment_1 = require("./reenrichment");
 const utils_1 = require("./utils");
-const enrichment_1 = require("./enrichment");
+const model_1 = require("./model");
 function startServer() {
     const app = (0, express_1.default)();
     const port = process.env.PORT;
     app.use(body_parser_1.default.json());
     // Endpoint to re-enrich podcasts
-    app.post("/re-enrich", (req, res) => __awaiter(this, void 0, void 0, function* () {
-        try {
-            const { podcasts } = req.body;
-            if (!Array.isArray(podcasts) || podcasts.length === 0) {
-                return res.status(400).json({
-                    error: "Invalid input. Expected an array of podcasts wrapped in a JSON object.",
-                });
-            }
-            // Extract podcast_index_ids from the received podcasts
-            const podcastIndexIds = podcasts
-                .map((podcast) => podcast.podcast_index_id)
-                .filter((id) => id !== null);
-            // Fetch podcasts from the database using the extracted podcast_index_ids
-            const podcastsToEnrich = yield utils_1.prisma.podcast.findMany({
-                where: {
-                    id: {
-                        in: podcastIndexIds,
-                    },
-                    dead: 0,
-                },
-            });
-            if (podcastsToEnrich.length === 0) {
-                return res
-                    .status(404)
-                    .json({ error: "No matching podcasts found in the database." });
-            }
-            // Re-enrich the podcasts
-            const payload = yield (0, enrichment_1.enrichPayload)(podcastsToEnrich);
-            const isBatchPosted = yield (0, enrichment_1.postEnrichedPodcasts)(payload);
-            if (!isBatchPosted) {
-                return res
-                    .status(500)
-                    .json({ error: "Failed to post re-enriched podcasts." });
-            }
-            res.json({ success: isBatchPosted });
+    app.post("/re-enrich", (_, res) => __awaiter(this, void 0, void 0, function* () {
+        if ((0, reenrichment_1.getIsReEnriching)()) {
+            res.send("Re-enrichment is already running.");
         }
-        catch (error) {
-            console.error("Error in re-enrichment process:", error);
-            res
-                .status(500)
-                .json({ error: "An error occurred during the re-enrichment process." });
+        else {
+            (0, reenrichment_1.startReEnricher)();
+            res.send("Starting re-enrichment now...");
         }
     }));
     app.listen(port, () => {
         console.log(`Server is running on port ${port}`);
     });
+    app.post("/rssurl-piid", (req, res) => __awaiter(this, void 0, void 0, function* () {
+        const stalePodcasts = req.body;
+        try {
+            const existingPodcasts = yield utils_1.prisma.podcast.findMany({
+                orderBy: {
+                    id: "asc",
+                },
+                where: {
+                    url: {
+                        in: stalePodcasts.items.map((podcast) => { var _a; return (_a = podcast.rss_feed_url) !== null && _a !== void 0 ? _a : ""; }),
+                    },
+                },
+            });
+            const stalePodcastsWithPiid = existingPodcasts.map((podcast) => {
+                return Object.assign(Object.assign({}, model_1.emptyEnriched), { podcast_name: "Unknown", podcast_index_id: podcast.id, rss_feed_url: podcast.url });
+            });
+            const resBody = {
+                items: stalePodcastsWithPiid,
+            };
+            res.json(resBody);
+        }
+        catch (e) {
+            console.log(`Error getting PodcastIndex ids from RSS URLs. Error: ${e}`);
+            res.send(`Error getting PodcastIndex ids from RSS URLs. ${e}`);
+        }
+    }));
 }
