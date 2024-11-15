@@ -390,7 +390,7 @@ async function addAppleInfo(
         const epTitleSelector = ".episode-details__title-text";
         await page.waitForSelector(epTitleSelector, {
           visible: true,
-          timeout: 15000,
+          timeout: 1000, //already waited 15 seconds, this should already be on the page if it is available
         });
       } catch (e) {
         console.log(

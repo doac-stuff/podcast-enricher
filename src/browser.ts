@@ -1,6 +1,7 @@
 import * as puppeteerCore from "puppeteer-core";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import puppeteerExtra from "puppeteer-extra";
+import { rm } from "fs/promises";
 
 puppeteerExtra.use(StealthPlugin());
 
@@ -14,14 +15,19 @@ let directBrowser: puppeteerCore.Browser | null = null;
 let directBrowserRequestPending = false;
 let directBrowserPromise: Promise<puppeteerCore.Browser> | null = null;
 
+const PROXY_BROWSER_LT = 1 * 60 * 1000; // 1 minute
+
 export async function waitForProxyBrowser(): Promise<puppeteerCore.Browser> {
   if (!proxyBrowser && !proxyBrowserRequestPending) {
     proxyBrowserRequestPending = true;
+    const userDataPath = `${
+      process.env.CHROME_DATA_PATH
+    }_proxy${Math.random()}`;
     proxyBrowserPromise = puppeteerExtra
       .launch({
         headless: true,
         executablePath: process.env.CHROME_EXEC_PATH,
-        userDataDir: `${process.env.CHROME_DATA_PATH}_proxy`, // Separate user data directory for proxy
+        userDataDir: userDataPath,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
@@ -57,6 +63,12 @@ export async function waitForProxyBrowser(): Promise<puppeteerCore.Browser> {
           });
         });
         await page.close();
+        setTimeout(async () => {
+          proxyBrowser = null;
+          proxyBrowserRequestPending = false;
+          await launchedBrowser.close();
+          await deleteUserDataFolder(userDataPath);
+        }, PROXY_BROWSER_LT);
         return proxyBrowser;
       });
   }
@@ -119,4 +131,13 @@ export async function waitForDirectBrowser(): Promise<puppeteerCore.Browser> {
   }
 
   throw new Error("Failed to initialize direct browser");
+}
+
+async function deleteUserDataFolder(userDataPath: string): Promise<void> {
+  try {
+    await rm(userDataPath, { recursive: true, force: true });
+  } catch (error) {
+    console.error(`Error deleting folder at ${userDataPath}:`, error);
+    throw error;
+  }
 }

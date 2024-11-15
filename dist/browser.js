@@ -16,6 +16,7 @@ exports.waitForProxyBrowser = waitForProxyBrowser;
 exports.waitForDirectBrowser = waitForDirectBrowser;
 const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
 const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
+const promises_1 = require("fs/promises");
 puppeteer_extra_1.default.use((0, puppeteer_extra_plugin_stealth_1.default)());
 // Proxy browser variables
 let proxyBrowser = null;
@@ -25,15 +26,17 @@ let proxyBrowserPromise = null;
 let directBrowser = null;
 let directBrowserRequestPending = false;
 let directBrowserPromise = null;
+const PROXY_BROWSER_LT = 1 * 60 * 1000; // 1 minute
 function waitForProxyBrowser() {
     return __awaiter(this, void 0, void 0, function* () {
         if (!proxyBrowser && !proxyBrowserRequestPending) {
             proxyBrowserRequestPending = true;
+            const userDataPath = `${process.env.CHROME_DATA_PATH}_proxy${Math.random()}`;
             proxyBrowserPromise = puppeteer_extra_1.default
                 .launch({
                 headless: true,
                 executablePath: process.env.CHROME_EXEC_PATH,
-                userDataDir: `${process.env.CHROME_DATA_PATH}_proxy`, // Separate user data directory for proxy
+                userDataDir: userDataPath,
                 args: [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
@@ -67,6 +70,12 @@ function waitForProxyBrowser() {
                     });
                 });
                 yield page.close();
+                setTimeout(() => __awaiter(this, void 0, void 0, function* () {
+                    proxyBrowser = null;
+                    proxyBrowserRequestPending = false;
+                    yield launchedBrowser.close();
+                    yield deleteUserDataFolder(userDataPath);
+                }), PROXY_BROWSER_LT);
                 return proxyBrowser;
             }));
         }
@@ -124,5 +133,16 @@ function waitForDirectBrowser() {
             return directBrowserPromise;
         }
         throw new Error("Failed to initialize direct browser");
+    });
+}
+function deleteUserDataFolder(userDataPath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            yield (0, promises_1.rm)(userDataPath, { recursive: true, force: true });
+        }
+        catch (error) {
+            console.error(`Error deleting folder at ${userDataPath}:`, error);
+            throw error;
+        }
     });
 }
