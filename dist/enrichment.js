@@ -39,7 +39,7 @@ function enrichPayload(podcasts) {
                     if (!epTitle || epTitle === "") {
                         throw new Error(`Failed to find an episode on podcast "${podcasts[i].title}. Will skip."`);
                     }
-                    let gotSpotify = yield addSpotifyInfoV2(podcasts[i], newReportRow);
+                    let gotSpotify = yield addSpotifyInfoV1(podcasts[i], newReportRow);
                     let gotYoutube = yield addYoutubeInfo(podcasts[i], newReportRow, epTitle);
                     if (gotSpotify || gotApple || gotYoutube) {
                         payload.items.push(newReportRow);

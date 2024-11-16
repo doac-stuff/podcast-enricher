@@ -55,7 +55,7 @@ export async function enrichPayload(
             `Failed to find an episode on podcast "${podcasts[i].title}. Will skip."`
           );
         }
-        let gotSpotify = await addSpotifyInfoV2(podcasts[i], newReportRow);
+        let gotSpotify = await addSpotifyInfoV1(podcasts[i], newReportRow);
         let gotYoutube = await addYoutubeInfo(
           podcasts[i],
           newReportRow,
