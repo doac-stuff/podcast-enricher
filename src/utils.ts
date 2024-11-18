@@ -349,3 +349,26 @@ export async function clickMoreButtonAndWaitForPopup(page: puppeteer.Page) {
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function savePage(page: number): Promise<void> {
+  const data = { page: page };
+  const jsonString = JSON.stringify(data);
+
+  try {
+    await fs.writeFile("page.json", jsonString);
+  } catch (error) {
+    console.error("Error saving page number:", error);
+    throw error;
+  }
+}
+
+export async function loadPage(): Promise<number> {
+  try {
+    const jsonString = await fs.readFile("page.json", "utf-8");
+    const data = JSON.parse(jsonString);
+    return data.page;
+  } catch (error) {
+    console.error("Error loading page number:", error);
+    return 0; // Return default page number if file doesn't exist or is invalid
+  }
+}

@@ -5,3 +5,4 @@ node_modules
 *.tgz
 *.tar
 prisma/migrations
+page.json

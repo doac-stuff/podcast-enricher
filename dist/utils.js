@@ -53,8 +53,11 @@ exports.extractSpotifyHref = extractSpotifyHref;
 exports.fetchHydratedHtmlContentProxy = fetchHydratedHtmlContentProxy;
 exports.fetchHydratedHtmlContentDirect = fetchHydratedHtmlContentDirect;
 exports.clickMoreButtonAndWaitForPopup = clickMoreButtonAndWaitForPopup;
+exports.savePage = savePage;
+exports.loadPage = loadPage;
 const crypto_1 = __importDefault(require("crypto"));
 const cheerio = __importStar(require("cheerio"));
+const promises_1 = __importDefault(require("fs/promises"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
 const browser_1 = require("./browser");
@@ -314,3 +317,29 @@ function clickMoreButtonAndWaitForPopup(page) {
 }
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 exports.sleep = sleep;
+function savePage(page) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const data = { page: page };
+        const jsonString = JSON.stringify(data);
+        try {
+            yield promises_1.default.writeFile("page.json", jsonString);
+        }
+        catch (error) {
+            console.error("Error saving page number:", error);
+            throw error;
+        }
+    });
+}
+function loadPage() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const jsonString = yield promises_1.default.readFile("page.json", "utf-8");
+            const data = JSON.parse(jsonString);
+            return data.page;
+        }
+        catch (error) {
+            console.error("Error loading page number:", error);
+            return 0; // Return default page number if file doesn't exist or is invalid
+        }
+    });
+}

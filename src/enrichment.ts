@@ -11,8 +11,10 @@ import {
   extractTotalViews,
   extractYoutubeChannelHref,
   fetchHydratedHtmlContentDirect,
+  loadPage,
   parseReviewCount,
   prisma,
+  savePage,
 } from "./utils";
 import { searchSpotify } from "./api.spotify";
 import { searchYouTube } from "./api.youtube";
@@ -126,7 +128,7 @@ export async function enrichAll() {
     },
   });
 
-  let page = 0;
+  let page = await loadPage();
   const limit = 10000;
   let seenCount = 0;
 
@@ -173,6 +175,7 @@ export async function enrichAll() {
         `Processed ${seenCount} podcasts so far out of ${totalCount}`
       );
       page++;
+      await savePage(page);
     } catch (e) {
       console.log(
         `An error occured. Stopped at batch ${page + 1}. Error: ${e}`

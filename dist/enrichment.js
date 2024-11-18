@@ -97,7 +97,7 @@ function enrichAll() {
                 dead: 0,
             },
         });
-        let page = 0;
+        let page = yield (0, utils_1.loadPage)();
         const limit = 10000;
         let seenCount = 0;
         while (true) {
@@ -136,6 +136,7 @@ function enrichAll() {
                 seenCount = page * limit + podcasts.length;
                 console.log(`Processed ${seenCount} podcasts so far out of ${totalCount}`);
                 page++;
+                yield (0, utils_1.savePage)(page);
             }
             catch (e) {
                 console.log(`An error occured. Stopped at batch ${page + 1}. Error: ${e}`);
