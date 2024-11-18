@@ -50,9 +50,11 @@ const node_fetch_1 = __importDefault(require("node-fetch"));
 function getLastEpisodeTitle(feedUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         const parser = new rss_parser_1.default();
+        // Convert HTTP to HTTPS if the URL starts with HTTP
+        const secureUrl = feedUrl.replace(/^http:/, "https:");
         try {
             // Fetch the XML content with relaxed security and headers
-            const response = yield (0, node_fetch_1.default)(feedUrl, {
+            const response = yield (0, node_fetch_1.default)(secureUrl, {
                 method: "GET",
                 headers: {
                     Accept: "*/*",
@@ -78,7 +80,7 @@ function getLastEpisodeTitle(feedUrl) {
             return null;
         }
         catch (error) {
-            console.error(`Error fetching or parsing the RSS feed at ${feedUrl}:`, error);
+            console.error(`Error fetching or parsing the RSS feed at ${secureUrl}:`, error);
             return null;
         }
     });

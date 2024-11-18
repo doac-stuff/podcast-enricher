@@ -12,9 +12,12 @@ export async function getLastEpisodeTitle(
 ): Promise<string | null> {
   const parser = new Parser();
 
+  // Convert HTTP to HTTPS if the URL starts with HTTP
+  const secureUrl = feedUrl.replace(/^http:/, "https:");
+
   try {
     // Fetch the XML content with relaxed security and headers
-    const response = await fetch(feedUrl, {
+    const response = await fetch(secureUrl, {
       method: "GET",
       headers: {
         Accept: "*/*",
@@ -45,7 +48,7 @@ export async function getLastEpisodeTitle(
     return null;
   } catch (error) {
     console.error(
-      `Error fetching or parsing the RSS feed at ${feedUrl}:`,
+      `Error fetching or parsing the RSS feed at ${secureUrl}:`,
       error
     );
     return null;
