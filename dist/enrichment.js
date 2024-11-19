@@ -107,8 +107,8 @@ function enrichAll() {
                         dead: 0,
                     },
                     orderBy: [
-                        { popularityScore: "desc" },
                         { newestItemPubdate: "desc" },
+                        { popularityScore: "desc" },
                         { itunesId: { sort: "desc", nulls: "last" } },
                         { id: "asc" },
                     ],
