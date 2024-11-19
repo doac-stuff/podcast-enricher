@@ -28,7 +28,7 @@ function enrichPayload(podcasts) {
             const enrichRow = () => __awaiter(this, void 0, void 0, function* () {
                 var _a, _b;
                 try {
-                    console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`);
+                    console.log(`Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}, last pub: ${new Date((podcasts[i].newestItemPubdate || 0) * 1000)}`);
                     yield addBasicInfo(podcasts[i], newReportRow);
                     //at least one enrichment must be successful to push the result
                     let { result: gotApple, epTitle } = yield addAppleInfo(podcasts[i], newReportRow);
@@ -109,6 +109,7 @@ function enrichAll() {
                     orderBy: [
                         { popularityScore: "desc" },
                         { newestItemPubdate: "desc" },
+                        { itunesId: { sort: "desc", nulls: "last" } },
                         { id: "asc" },
                     ],
                     skip: page * limit,

@@ -38,7 +38,9 @@ export async function enrichPayload(
     const enrichRow = async () => {
       try {
         console.log(
-          `Enriching podcast "${podcasts[i].title}" with popularity score = ${podcasts[i].popularityScore}`
+          `Enriching podcast "${podcasts[i].title}" with popularity score = ${
+            podcasts[i].popularityScore
+          }, last pub: ${new Date((podcasts[i].newestItemPubdate || 0) * 1000)}`
         );
         await addBasicInfo(podcasts[i], newReportRow);
         //at least one enrichment must be successful to push the result
@@ -141,6 +143,7 @@ export async function enrichAll() {
         orderBy: [
           { popularityScore: "desc" },
           { newestItemPubdate: "desc" },
+          { itunesId: { sort: "desc", nulls: "last" } },
           { id: "asc" },
         ],
         skip: page * limit,
