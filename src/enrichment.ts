@@ -211,6 +211,7 @@ async function addBasicInfo(podcast: Podcast, row: PodcastEnriched) {
     .filter((category) => category && category.trim() !== "")
     .join(", ");
   row.rss_total_episodes = podcast.episodeCount ?? 0;
+  row.rss_last_published_at = new Date((podcast.newestItemPubdate || 0) * 1000);
   row.host = podcast.host;
   row.author = podcast.itunesAuthor;
   row.owner = podcast.itunesOwnerName;

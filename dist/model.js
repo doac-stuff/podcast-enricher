@@ -10,6 +10,7 @@ exports.emptyEnriched = {
     rss_feed_url: null,
     rss_categories: null,
     rss_total_episodes: null,
+    rss_last_published_at: null,
     host: null,
     author: null,
     owner: null,

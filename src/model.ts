@@ -7,6 +7,7 @@ export interface PodcastEnriched {
   rss_feed_url: string | null;
   rss_categories: string | null;
   rss_total_episodes: number | null;
+  rss_last_published_at: Date | null;
   host: string | null;
   author: string | null;
   owner: string | null;
@@ -34,6 +35,7 @@ export const emptyEnriched: PodcastEnriched = {
   rss_feed_url: null,
   rss_categories: null,
   rss_total_episodes: null,
+  rss_last_published_at: null,
   host: null,
   author: null,
   owner: null,

@@ -170,6 +170,7 @@ function addBasicInfo(podcast, row) {
             .filter((category) => category && category.trim() !== "")
             .join(", ");
         row.rss_total_episodes = (_e = podcast.episodeCount) !== null && _e !== void 0 ? _e : 0;
+        row.rss_last_published_at = new Date((podcast.newestItemPubdate || 0) * 1000);
         row.host = podcast.host;
         row.author = podcast.itunesAuthor;
         row.owner = podcast.itunesOwnerName;
