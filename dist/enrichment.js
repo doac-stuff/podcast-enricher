@@ -63,7 +63,10 @@ function postEnrichedPodcasts(payload) {
         let res = yield fetch(`${utils_1.backendUrl}/podcasts`, {
             method: "POST",
             body: JSON.stringify(payload),
-            headers: [["Content-Type", "application/json"]],
+            headers: [
+                ["Content-Type", "application/json"],
+                ["Authorization", `Bearer ${utils_1.backendToken}`],
+            ],
         });
         if (res.ok) {
             console.log(`Posted ${payload.items.length} enriched podcasts. Result: ${yield res.text()}`);
@@ -80,7 +83,10 @@ function filterUnseenPodcasts(podcasts) {
         let res = yield fetch(`${utils_1.backendUrl}/enriched`, {
             method: "POST",
             body: JSON.stringify({ items: podcasts.map((podcast) => podcast.id) }),
-            headers: [["Content-Type", "application/json"]],
+            headers: [
+                ["Content-Type", "application/json"],
+                ["Authorization", `Bearer ${utils_1.backendToken}`],
+            ],
         });
         const enrichedPodcasts = yield res.json();
         if (enrichedPodcasts.error) {
