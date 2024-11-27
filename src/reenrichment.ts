@@ -1,5 +1,5 @@
 import { PodcastEnriched } from "./model";
-import { backendUrl, prisma } from "./utils";
+import { backendToken, backendUrl, prisma } from "./utils";
 import { enrichPayload, postEnrichedPodcasts } from "./enrichment";
 
 let isReEnriching = false;
@@ -9,10 +9,19 @@ export async function startReEnricher() {
   try {
     while (true) {
       const res = await fetch(
-        `${backendUrl}/stale_podcasts?page=${0}&limit=${1000}`
+        `${backendUrl}/stale_podcasts?page=${0}&limit=${1000}`,
+        { headers: [["Authorization", `Bearer ${backendToken}`]] }
       );
       const stalePodcasts: { items: PodcastEnriched[]; count: number } =
         await res.json();
+
+      if (!res.ok) {
+        console.log(
+          `Re-enrichment exited message from backend - status: ${
+            res.status
+          }, message: ${await res.text()}`
+        );
+      }
 
       // Extract podcast_index_ids from the received podcasts
       const podcastIndexIds = stalePodcasts.items

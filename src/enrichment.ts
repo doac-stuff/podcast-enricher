@@ -1,4 +1,5 @@
 import {
+  backendToken,
   backendUrl,
   extractAndRecentAverageViews,
   extractAppleLastEpisode as extractAppleLastEpisodeTitle,
@@ -88,7 +89,10 @@ export async function postEnrichedPodcasts(payload: PodcastsEnrichedPayload) {
   let res = await fetch(`${backendUrl}/podcasts`, {
     method: "POST",
     body: JSON.stringify(payload),
-    headers: [["Content-Type", "application/json"]],
+    headers: [
+      ["Content-Type", "application/json"],
+      ["Authorization", `Bearer ${backendToken}`],
+    ],
   });
   if (res.ok) {
     console.log(
@@ -111,7 +115,10 @@ async function filterUnseenPodcasts(podcasts: Podcast[]) {
   let res = await fetch(`${backendUrl}/enriched`, {
     method: "POST",
     body: JSON.stringify({ items: podcasts.map((podcast) => podcast.id) }),
-    headers: [["Content-Type", "application/json"]],
+    headers: [
+      ["Content-Type", "application/json"],
+      ["Authorization", `Bearer ${backendToken}`],
+    ],
   });
   const enrichedPodcasts: { items: number[]; error: string } = await res.json();
   if (enrichedPodcasts.error) {

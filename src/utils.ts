@@ -9,6 +9,7 @@ import { waitForDirectBrowser, waitForProxyBrowser } from "./browser";
 env.config();
 
 export const backendUrl = process.env.BACKEND_URL ?? "";
+export const backendToken = process.env.BACKEND_TOKEN ?? "";
 
 export const prisma = new PrismaClient();
 
