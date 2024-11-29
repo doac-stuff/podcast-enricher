@@ -261,7 +261,7 @@ async function addSpotifyInfoV1(
         console.log(
           `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
         );
-        const rating = extractSpotifyReview(html) ?? ["0", "0"];
+        const rating = extractSpotifyReview(html);
         console.log(
           `Extracted Spotify rating ${rating} for "${podcast.title}".`
         );
