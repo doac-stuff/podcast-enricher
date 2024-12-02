@@ -16,7 +16,7 @@ async function main() {
     }
     startReEnricher();
     startServer();
-    // enrichAll();
+    enrichAll();
   } catch (e) {
     console.error(`Error starting up enricher: ${e}`);
   }
