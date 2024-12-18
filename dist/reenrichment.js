@@ -19,7 +19,7 @@ function startReEnricher() {
         isReEnriching = true;
         try {
             while (true) {
-                const res = yield fetch(`${utils_1.backendUrl}/stale_podcasts?page=${0}&limit=${1000}`, { headers: [["Authorization", `Bearer ${utils_1.backendToken}`]] });
+                const res = yield fetch(`${utils_1.backendUrl}/api/podcasts/stale?page=${0}&limit=${1000}`, { headers: [["Authorization", `Bearer ${utils_1.backendToken}`]] });
                 const stalePodcasts = yield res.json();
                 if (!res.ok) {
                     console.log(`Re-enrichment exited message from backend - status: ${res.status}, message: ${yield res.text()}`);

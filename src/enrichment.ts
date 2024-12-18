@@ -86,7 +86,7 @@ export async function enrichPayload(
 }
 
 export async function postEnrichedPodcasts(payload: PodcastsEnrichedPayload) {
-  let res = await fetch(`${backendUrl}/podcasts`, {
+  let res = await fetch(`${backendUrl}/api/podcasts`, {
     method: "POST",
     body: JSON.stringify(payload),
     headers: [
@@ -112,7 +112,7 @@ export async function postEnrichedPodcasts(payload: PodcastsEnrichedPayload) {
 }
 
 async function filterUnseenPodcasts(podcasts: Podcast[]) {
-  let res = await fetch(`${backendUrl}/enriched`, {
+  let res = await fetch(`${backendUrl}api/podcasts/enriched`, {
     method: "POST",
     body: JSON.stringify({ items: podcasts.map((podcast) => podcast.id) }),
     headers: [

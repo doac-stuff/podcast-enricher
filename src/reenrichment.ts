@@ -9,7 +9,7 @@ export async function startReEnricher() {
   try {
     while (true) {
       const res = await fetch(
-        `${backendUrl}/stale_podcasts?page=${0}&limit=${1000}`,
+        `${backendUrl}/api/podcasts/stale?page=${0}&limit=${1000}`,
         { headers: [["Authorization", `Bearer ${backendToken}`]] }
       );
       const stalePodcasts: { items: PodcastEnriched[]; count: number } =
