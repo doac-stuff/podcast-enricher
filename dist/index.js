@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const api_podcastindex_1 = require("./api.podcastindex");
+const enrichment_1 = require("./enrichment");
 const reenrichment_1 = require("./reenrichment");
 const server_1 = require("./server");
 const utils_1 = require("./utils");
@@ -22,7 +23,7 @@ function main() {
             }
             (0, reenrichment_1.startReEnricher)();
             (0, server_1.startServer)();
-            // enrichAll();
+            (0, enrichment_1.enrichAll)();
         }
         catch (e) {
             console.error(`Error starting up enricher: ${e}`);
