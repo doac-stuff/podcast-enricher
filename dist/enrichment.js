@@ -80,7 +80,7 @@ function postEnrichedPodcasts(payload) {
 }
 function filterUnseenPodcasts(podcasts) {
     return __awaiter(this, void 0, void 0, function* () {
-        let res = yield fetch(`${utils_1.backendUrl}api/podcasts/enriched`, {
+        let res = yield fetch(`${utils_1.backendUrl}/api/podcasts/enriched`, {
             method: "POST",
             body: JSON.stringify({ items: podcasts.map((podcast) => podcast.id) }),
             headers: [
