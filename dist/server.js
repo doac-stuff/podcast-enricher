@@ -18,10 +18,20 @@ const body_parser_1 = __importDefault(require("body-parser"));
 const reenrichment_1 = require("./reenrichment");
 const utils_1 = require("./utils");
 const model_1 = require("./model");
+const enrichment_1 = require("./enrichment");
 function startServer() {
     const app = (0, express_1.default)();
     const port = process.env.PORT;
     app.use(body_parser_1.default.json());
+    app.post("/stop", (_, res) => __awaiter(this, void 0, void 0, function* () {
+        res.send("Stopping enricher now. This enricher will be unavailable for a few seconds...");
+        process.exit(0);
+    }));
+    app.post("/start", (_, res) => __awaiter(this, void 0, void 0, function* () {
+        res.send("Starting enricher now...");
+        (0, reenrichment_1.startReEnricher)();
+        (0, enrichment_1.enrichAll)();
+    }));
     // Endpoint to re-enrich podcasts
     app.post("/re-enrich", (_, res) => __awaiter(this, void 0, void 0, function* () {
         if ((0, reenrichment_1.getIsReEnriching)()) {
@@ -32,9 +42,6 @@ function startServer() {
             res.send("Starting re-enrichment now...");
         }
     }));
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
-    });
     app.post("/rssurl-piid", (req, res) => __awaiter(this, void 0, void 0, function* () {
         const stalePodcasts = req.body;
         try {
@@ -61,4 +68,7 @@ function startServer() {
             res.send(`Error getting PodcastIndex ids from RSS URLs. ${e}`);
         }
     }));
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
 }

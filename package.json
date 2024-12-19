@@ -1,5 +1,5 @@
 {
-  "name": "podcastracker-backend",
+  "name": "podtrack-enricher",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {

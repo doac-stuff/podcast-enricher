@@ -4,12 +4,26 @@ import { getIsReEnriching, startReEnricher } from "./reenrichment";
 import { prisma } from "./utils";
 import { Podcast } from "@prisma/client";
 import { emptyEnriched, PodcastsEnrichedPayload } from "./model";
+import { enrichAll } from "./enrichment";
 
 export function startServer() {
   const app = express();
   const port = process.env.PORT;
 
   app.use(bodyParser.json());
+
+  app.post("/stop", async (_: Request, res: Response) => {
+    res.send(
+      "Stopping enricher now. This enricher will be unavailable for a few seconds..."
+    );
+    process.exit(0);
+  });
+
+  app.post("/start", async (_: Request, res: Response) => {
+    res.send("Starting enricher now...");
+    startReEnricher();
+    enrichAll();
+  });
 
   // Endpoint to re-enrich podcasts
   app.post("/re-enrich", async (_: Request, res: Response) => {
@@ -19,10 +33,6 @@ export function startServer() {
       startReEnricher();
       res.send("Starting re-enrichment now...");
     }
-  });
-
-  app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
   });
 
   app.post("/rssurl-piid", async (req: Request, res: Response) => {
@@ -56,5 +66,9 @@ export function startServer() {
       console.log(`Error getting PodcastIndex ids from RSS URLs. Error: ${e}`);
       res.send(`Error getting PodcastIndex ids from RSS URLs. ${e}`);
     }
+  });
+
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
   });
 }
