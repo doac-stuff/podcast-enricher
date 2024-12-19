@@ -395,7 +395,7 @@ async function addAppleInfo(
     const url = `https://podcasts.apple.com/podcast/id${podcast.itunesId}`;
     row.apple_podcast_url = url;
     const html = await fetchHydratedHtmlContentDirect(url, async (page) => {
-      const reviewSelector = "li.svelte-11a0tog";
+      const reviewSelector = "li.svelte-123qhuj";
       await page.waitForSelector(reviewSelector, {
         visible: true,
         timeout: 15000,

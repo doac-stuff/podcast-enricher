@@ -79,7 +79,7 @@ function extractSpotifyReview(html) {
 }
 function extractAppleReview(html) {
     const $ = cheerio.load(html);
-    const reviewInfo = $("li.svelte-11a0tog").first().text().trim();
+    const reviewInfo = $("li.svelte-123qhuj").first().text().trim();
     return [reviewInfo.length ? reviewInfo : null];
 }
 function extractAppleLastEpisode(html) {

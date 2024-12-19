@@ -35,7 +35,7 @@ export function extractSpotifyReview(html: string): (string | null)[] {
 export function extractAppleReview(html: string): (string | null)[] {
   const $ = cheerio.load(html);
 
-  const reviewInfo = $("li.svelte-11a0tog").first().text().trim();
+  const reviewInfo = $("li.svelte-123qhuj").first().text().trim();
 
   return [reviewInfo.length ? reviewInfo : null];
 }
