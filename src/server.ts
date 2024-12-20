@@ -16,7 +16,7 @@ export function startServer() {
     res.send(
       "Stopping enricher now. This enricher will be unavailable for a few seconds..."
     );
-    process.exit(0);
+    process.exit(1);
   });
 
   app.post("/start", async (_: Request, res: Response) => {

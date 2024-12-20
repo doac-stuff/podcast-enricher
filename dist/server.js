@@ -25,7 +25,7 @@ function startServer() {
     app.use(body_parser_1.default.json());
     app.post("/stop", (_, res) => __awaiter(this, void 0, void 0, function* () {
         res.send("Stopping enricher now. This enricher will be unavailable for a few seconds...");
-        process.exit(0);
+        process.exit(1);
     }));
     app.post("/start", (_, res) => __awaiter(this, void 0, void 0, function* () {
         res.send("Starting enricher now...");
