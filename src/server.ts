@@ -2,7 +2,6 @@ import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import { getIsReEnriching, startReEnricher } from "./reenrichment";
 import { prisma } from "./utils";
-import { Podcast } from "@prisma/client";
 import { emptyEnriched, PodcastsEnrichedPayload } from "./model";
 import { enrichAll } from "./enrichment";
 

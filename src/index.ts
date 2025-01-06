@@ -3,8 +3,10 @@ import {
   downloadAndExtractDatabase,
   isPodcastDbOldOrMissing,
 } from "./api.podcastindex";
+import { enrichAll } from "./enrichment";
+import { startReEnricher } from "./reenrichment";
 import { startServer } from "./server";
-import { prisma } from "./utils";
+import { backendToken, backendUrl, prisma } from "./utils";
 
 async function main() {
   try {
@@ -13,8 +15,34 @@ async function main() {
       await cleanupDatabase();
     }
     startServer();
+    startEnricherIfActive();
   } catch (e) {
     console.error(`Error starting up enricher: ${e}`);
+  }
+}
+
+async function startEnricherIfActive() {
+  try {
+    const res = await fetch(`${backendUrl}/api/enricher`, {
+      headers: [["Authorization", `Bearer ${backendToken}`]],
+    });
+
+    const myLabel = process.env.ENRICHER_LABEL;
+    const activeLabel = await res.text();
+
+    console.log(
+      `Enricher Label: ${myLabel}, Active Enricher Label: ${activeLabel}`
+    );
+
+    if (myLabel === activeLabel) {
+      console.log("Starting enricher now because it is currently active...");
+      startReEnricher();
+      enrichAll();
+    }
+  } catch (e) {
+    console.log(
+      `Could not ascertain the state of the enricher. Error: ${e}. Waiting...`
+    );
   }
 }
 
