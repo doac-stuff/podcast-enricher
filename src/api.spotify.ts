@@ -1,12 +1,23 @@
 import axios from "axios";
 
+interface TokenInfo {
+  accessToken: string;
+  expiresAt: number;
+}
+
+let tokenCache: TokenInfo | null = null;
+
 async function getSpotifyAccessToken(): Promise<string> {
+  // Check if we have a valid cached token
+  if (tokenCache && tokenCache.expiresAt > Date.now()) {
+    return tokenCache.accessToken;
+  }
+
+  // Get new token if expired or not cached
   var authOptions = {
     url: "https://accounts.spotify.com/api/token",
     form: {
-      grant_type: "refresh_token",
-      refresh_token:
-        "AQCquMgqNgzATgmK1z4rQYE6f9gWD0FIoGcCxg5HseXziQZUuVGjbXYrwJxCYwyduPbb51JSaaaBz2JfXG84OcsHwDHmsHX8G_alTmgwn0dOp9fR3pphIO9bJujEtrNsdz4",
+      grant_type: "client_credentials",
     },
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -25,7 +36,13 @@ async function getSpotifyAccessToken(): Promise<string> {
     headers: authOptions.headers,
   });
 
-  return response.data.access_token;
+  // Cache the new token with expiration time (1 hour = 3600000 ms)
+  tokenCache = {
+    accessToken: response.data.access_token,
+    expiresAt: Date.now() + 3540000, // Setting to 59 minutes for safety margin
+  };
+
+  return tokenCache.accessToken;
 }
 
 async function searchSpotify(query: string): Promise<SpotifySearchResult> {
