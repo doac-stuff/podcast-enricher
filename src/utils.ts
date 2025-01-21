@@ -40,7 +40,7 @@ export function extractAppleReview(html: string): (string | null)[] {
   return [reviewInfo.length ? reviewInfo : null];
 }
 
-export function extractAppleLastEpisode(html: string): string | null {
+export function extractAppleLastEpisodeTitle(html: string): string | null {
   const $ = cheerio.load(html);
 
   const title = $(".episode-details__title-text").first().text();

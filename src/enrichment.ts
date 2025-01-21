@@ -2,7 +2,7 @@ import {
   backendToken,
   backendUrl,
   extractAndRecentAverageViews,
-  extractAppleLastEpisode as extractAppleLastEpisodeTitle,
+  extractAppleLastEpisodeTitle,
   extractAppleReview,
   extractFromParentheses,
   extractLastPublishedDate,
@@ -26,7 +26,6 @@ import {
   PodcastsEnrichedPayload,
 } from "./model";
 import { getLastEpisodeTitle } from "./api.podcastindex";
-import { distributedSearch } from "./search";
 
 export async function enrichPayload(
   podcasts: Podcast[]
@@ -287,105 +286,7 @@ async function addSpotifyInfoV1(
   }
 }
 
-async function addSpotifyInfoV2(
-  podcast: Podcast,
-  row: PodcastEnriched
-): Promise<boolean> {
-  try {
-    const link = await distributedSearch(
-      `"${podcast.title}" "all episodes" "follow" "about" spotify podcast`
-    );
-    console.log(
-      `Following link ${link} to find Spotify show "${podcast.title}". Adding corresponding Spotify info...`
-    );
-    row.spotify_url = link ?? "";
-    let html = await fetchHydratedHtmlContentDirect(
-      row.spotify_url,
-      async (page) => {
-        const reviewSelector =
-          ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
-        await page.waitForSelector(reviewSelector, {
-          visible: true,
-          timeout: 15000,
-        });
-      }
-    );
-    console.log(
-      `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
-    );
-    const rating = extractSpotifyReview(html) ?? ["0", "0"];
-    console.log(`Extracted Spotify rating ${rating} for "${podcast.title}".`);
-    row.spotify_review_count = parseReviewCount(
-      extractFromParentheses(rating[0] ?? "")
-    );
-    row.spotify_review_score = parseFloat(rating[1] ?? "0");
-    return true;
-  } catch (e: any) {
-    try {
-      console.log(
-        `Distributed search failed to find a Spotify link for "${podcast.title}". Trying a Spotify search...`
-      );
-      //the try a spotify search
-      let searchResults = await searchSpotify(
-        `${podcast.title} ${podcast.itunesAuthor}`
-      );
-      if (searchResults.shows.items.length < 1 && podcast.title) {
-        // If there are no results on title + name, then the podcast is obscurely named and the title only should be unique enough to find it.
-        searchResults = await searchSpotify(podcast.title);
-      }
-      for (let i = 0; i < searchResults.shows.items.length; i++) {
-        const show = searchResults.shows.items[i];
-        if (!show) continue;
-        if (
-          show.name.includes(podcast.title ?? "null%") ||
-          podcast?.title?.includes(show.name)
-        ) {
-          console.log(
-            `Found name title match on Spotify show "${show.name}". Adding corresponding Spotify info...`
-          );
-          row.spotify_url = show.external_urls.spotify;
-          const html = await fetchHydratedHtmlContentDirect(
-            row.spotify_url,
-            async (page) => {
-              const reviewSelector =
-                ".Type__TypeElement-sc-goli3j-0.dOtTDl.ret7iHkCxcJvsZU14oPY";
-              await page.waitForSelector(reviewSelector, {
-                visible: true,
-                timeout: 15000,
-              });
-            }
-          );
-          console.log(
-            `Fetched Spotify html for "${podcast.title}". It has ${html.length} characters.`
-          );
-          const rating = extractSpotifyReview(html) ?? ["0", "0"];
-          console.log(
-            `Extracted Spotify rating ${rating} for "${podcast.title}".`
-          );
-          row.spotify_review_count = parseReviewCount(
-            extractFromParentheses(rating[0] ?? "")
-          );
-          row.spotify_review_score = parseFloat(rating[1] ?? "0");
-          return true;
-        }
-      }
-      return false;
-    } catch (e: any) {
-      console.log(
-        `Failed to add Spotify info to podcast "${podcast.title}". Error: ${e}`
-      );
-      if (`${e}`.toLowerCase().includes("protocol error")) {
-        console.log(
-          "Protocol error is most likely caused by a browser crash. Exiting app..."
-        );
-        process.exit(1);
-      }
-      return false;
-    }
-  }
-}
-
-async function addAppleInfo(
+export async function addAppleInfo(
   podcast: Podcast,
   row: PodcastEnriched
 ): Promise<{ result: boolean; epTitle: string | null }> {
@@ -442,8 +343,8 @@ async function addAppleInfo(
   }
 }
 
-async function addYoutubeInfo(
-  podcast: Podcast,
+export async function addYoutubeInfo(
+  podcast: { title: string },
   row: PodcastEnriched,
   epTitle: string
 ): Promise<boolean> {

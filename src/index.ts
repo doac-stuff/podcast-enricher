@@ -38,6 +38,8 @@ async function startEnricherIfActive() {
       console.log("Starting enricher now because it is currently active...");
       startReEnricher();
       enrichAll();
+    } else {
+      //Start youtube only re-enrichment
     }
   } catch (e) {
     console.log(
